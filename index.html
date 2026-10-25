@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>知识地下城 · 答题闯关</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(132, 204, 22, 0.18), transparent 35%),
+      radial-gradient(circle at 80% 90%, rgba(220, 38, 38, 0.12), transparent 35%),
+      #07110c;
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #eaffdf;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .game {
+    width: 100%;
+    max-width: 470px;
+    padding: 18px;
+    border-radius: 26px;
+    background: rgba(12, 32, 22, 0.92);
+    border: 1px solid rgba(132, 204, 22, 0.22);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    position: relative;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .title {
+    font-size: 21px;
+    font-weight: 900;
+    color: #b8ff7a;
+    letter-spacing: 0.5px;
+  }
+
+  .floor-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .floor {
+    font-size: 13px;
+    color: #ffd966;
+    background: rgba(255, 217, 102, 0.08);
+    border: 1px solid rgba(255, 217, 102, 0.22);
+    padding: 6px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  #muteBtn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(255, 217, 102, 0.22);
+    border-radius: 999px;
+    background: rgba(255, 217, 102, 0.08);
+    color: #ffd966;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.12s ease;
+  }
+
+  #muteBtn:active { transform: scale(0.9); }
+
+  .best {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #6f8f78;
+    text-align: right;
+  }
+
+  .best b { color: #ffd966; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 12px 0 14px;
+  }
+
+  .stat {
+    padding: 8px 4px;
+    border-radius: 12px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.055);
+    font-size: 11px;
+    color: #9fbfa8;
+  }
+
+  .stat b {
+    display: block;
+    margin-top: 3px;
+    font-size: 15px;
+    color: #eaffdf;
+  }
+
+  .stat b.bump {
+    animation: statBump 0.3s ease;
+  }
+
+  @keyframes statBump {
+    0% { transform: scale(1); color: #b8ff7a; }
+    50% { transform: scale(1.35); color: #b8ff7a; }
+    100% { transform: scale(1); }
+  }
+
+  .player-panel,
+  .enemy-panel {
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-hit {
+    animation: panelShake 0.3s ease;
+  }
+
+  @keyframes panelShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(2px); }
+  }
+
+  .panel-hit-crit {
+    animation: panelShake 0.3s ease, critFlash 0.4s ease;
+  }
+
+  @keyframes critFlash {
+    0% { background: rgba(255, 217, 102, 0.28); }
+    100% { background: rgba(255, 255, 255, 0.05); }
+  }
+
+  .float-num {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    font-weight: 900;
+    color: #ff8f8f;
+    pointer-events: none;
+    animation: floatUp 0.9s ease forwards;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+    white-space: nowrap;
+  }
+
+  .float-num.crit {
+    font-size: 30px;
+    color: #ffd966;
+  }
+
+  .float-num.heal {
+    color: #7bf29b;
+  }
+
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translate(-50%, 12px) scale(0.6); }
+    18% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+    100% { opacity: 0; transform: translate(-50%, -46px) scale(1); }
+  }
+
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    margin: 4px 0;
+    font-size: 12px;
+    color: #9fbfa8;
+  }
+
+  .hpbar {
+    height: 12px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #1b2b22;
+  }
+
+  .hpfill {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.25s ease;
+  }
+
+  .hpfill.player {
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+  }
+
+  .hpfill.player.low {
+    background: linear-gradient(90deg, #fb923c, #dc2626);
+    animation: lowHp 0.8s ease-in-out infinite;
+  }
+
+  @keyframes lowHp {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  .hpfill.enemy {
+    background: linear-gradient(90deg, #f87171, #dc2626);
+  }
+
+  .substats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 9px;
+    font-size: 12px;
+    color: #9fbfa8;
+  }
+
+  .substats b { color: #eaffdf; }
+
+  .enemy-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 7px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffe3a3;
+  }
+
+  .enemy-face {
+    font-size: 26px;
+    line-height: 1;
+    animation: enemyIdle 1.8s ease-in-out infinite;
+  }
+
+  .enemy-panel.hurt .enemy-face { animation: enemyHurt 0.35s ease; }
+
+  @keyframes enemyIdle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  @keyframes enemyHurt {
+    0%, 100% { transform: rotate(0); }
+    30% { transform: rotate(-14deg) scale(1.15); }
+    60% { transform: rotate(10deg); }
+  }
+
+  .enemy-name-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .enemy-title span:last-child {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9fbfa8;
+    white-space: nowrap;
+  }
+
+  /* ---------- 答题区 ---------- */
+  .quiz-card {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    transition: border-color 0.2s ease;
+  }
+
+  .quiz-card.right { border-color: rgba(74, 222, 128, 0.6); }
+  .quiz-card.wrong { border-color: rgba(248, 113, 113, 0.6); }
+
+  .timebar {
+    height: 6px;
+    border-radius: 999px;
+    background: #1b2b22;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .timefill {
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #a3e635, #22c55e);
+    transition: width 0.1s linear;
+  }
+
+  .timefill.urgent {
+    background: linear-gradient(90deg, #fb923c, #dc2626);
+  }
+
+  .question {
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.55;
+    color: #eaffdf;
+    margin-bottom: 12px;
+    min-height: 44px;
+  }
+
+  .question .qnum {
+    display: inline-block;
+    margin-right: 6px;
+    font-size: 11px;
+    font-weight: 900;
+    color: #b8ff7a;
+    background: rgba(132, 204, 22, 0.12);
+    border: 1px solid rgba(132, 204, 22, 0.25);
+    padding: 1px 7px;
+    border-radius: 6px;
+    vertical-align: 1px;
+  }
+
+  .question .qnum.mid { color: #7ec8ff; background: rgba(126, 200, 255, 0.1); border-color: rgba(126, 200, 255, 0.3); }
+  .question .qnum.hard { color: #ff9f6f; background: rgba(255, 159, 111, 0.1); border-color: rgba(255, 159, 111, 0.3); }
+
+  .options {
+    display: grid;
+    gap: 8px;
+  }
+
+  .opt {
+    padding: 11px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.04);
+    color: #d7ecd9;
+    font-family: inherit;
+    font-size: 13.5px;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.45;
+    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    touch-action: manipulation;
+  }
+
+  .opt:hover:not(:disabled) {
+    border-color: rgba(163, 230, 53, 0.5);
+    background: rgba(132, 204, 22, 0.08);
+  }
+
+  .opt:active:not(:disabled) { transform: scale(0.99); }
+
+  .opt:disabled { cursor: default; opacity: 0.85; }
+
+  .opt .tag {
+    display: inline-block;
+    margin-right: 8px;
+    font-weight: 900;
+    color: #9fbfa8;
+  }
+
+  .opt.correct {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.14);
+    color: #d9ffe3;
+  }
+
+  .opt.correct .tag { color: #4ade80; }
+
+  .opt.wrong-pick {
+    border-color: #f87171;
+    background: rgba(248, 113, 113, 0.14);
+    color: #ffd9d9;
+  }
+
+  .opt.wrong-pick .tag { color: #f87171; }
+
+  .opt.faded { opacity: 0.35; }
+
+  .verdict {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    min-height: 18px;
+  }
+
+  .verdict.ok { color: #7bf29b; }
+  .verdict.no { color: #ff9f9f; }
+
+  .log {
+    max-height: 108px;
+    margin-top: 12px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #a7c4ad;
+    -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent);
+    mask-image: linear-gradient(180deg, #000 78%, transparent);
+  }
+
+  .log-line {
+    padding: 2px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+    animation: logIn 0.25s ease;
+  }
+
+  @keyframes logIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-line.dmg { color: #ff9f9f; }
+  .log-line.crit { color: #ffd966; font-weight: 700; }
+  .log-line.heal { color: #7bf29b; }
+  .log-line.win { color: #b8ff7a; font-weight: 700; }
+  .log-line.info { color: #a7c4ad; }
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.76);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .modal.hidden { display: none; }
+
+  .modal-box {
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+    text-align: center;
+    border-radius: 24px;
+    background: #10251a;
+    border: 1px solid rgba(132, 204, 22, 0.35);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+    animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .modal h2 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    color: #b8ff7a;
+  }
+
+  .modal p {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #9fbfa8;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .reward-card {
+    padding: 16px 12px;
+    border-radius: 18px;
+    border: 1px solid rgba(132, 204, 22, 0.3);
+    background: linear-gradient(180deg, rgba(132, 204, 22, 0.14), rgba(255, 255, 255, 0.03));
+    color: #eaffdf;
+    font-family: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    touch-action: manipulation;
+  }
+
+  .reward-card:hover {
+    transform: translateY(-3px);
+    border-color: #a3e635;
+    background: linear-gradient(180deg, rgba(132, 204, 22, 0.24), rgba(255, 255, 255, 0.05));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .reward-card:active { transform: scale(0.97); }
+
+  .rarity {
+    display: inline-block;
+    margin-bottom: 8px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  .rarity.common { color: #9fbfa8; background: rgba(159, 191, 168, 0.12); }
+  .rarity.rare { color: #7ec8ff; background: rgba(126, 200, 255, 0.12); }
+  .rarity.epic { color: #d0a3ff; background: rgba(208, 163, 255, 0.14); }
+
+  .reward-icon {
+    margin-bottom: 6px;
+    font-size: 32px;
+  }
+
+  .reward-name {
+    margin-bottom: 6px;
+    font-size: 15px;
+    font-weight: 900;
+    color: #d9ff9e;
+  }
+
+  .reward-desc {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #a7c4ad;
+  }
+
+  .record-line {
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: #ffd966;
+  }
+
+  #gameOverModal .modal-box { max-width: 360px; }
+  #gameOverModal p { margin-bottom: 14px; }
+
+  @media (max-width: 380px) {
+    .cards { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="game">
+  <header>
+    <div class="title">🧠 知识地下城</div>
+    <div class="floor-wrap">
+      <div class="floor">第 <span id="floorNum">1</span> 层</div>
+      <button id="muteBtn" title="音效开关">🔊</button>
+    </div>
+  </header>
+
+  <div class="best">🏆 历史最佳：第 <b id="bestFloor">-</b> 层 · 答对挥刀，答错挨打 · 20 层后是面试档 · 选项顺序每局随机</div>
+
+  <div class="stats">
+    <div class="stat"><span>🍉 西瓜</span><b id="watermelon">0</b></div>
+    <div class="stat"><span>⚔️ 攻击</span><b id="atk">10</b></div>
+    <div class="stat"><span>🎯 暴击</span><b id="crit">5%</b></div>
+    <div class="stat"><span>✅ 正确率</span><b id="acc">-</b></div>
+  </div>
+
+  <div class="player-panel" id="playerPanel">
+    <div class="bar-label">
+      <span>你的生命</span>
+      <span id="playerHpText">100/100</span>
+    </div>
+    <div class="hpbar">
+      <div id="playerHpBar" class="hpfill player"></div>
+    </div>
+    <div class="substats">
+      <span>🛡️ 护盾 <b id="shield">0</b></span>
+      <span>🧃 吸血 <b id="lifesteal">0</b></span>
+      <span>🌵 反伤 <b id="thorns">0</b></span>
+      <span>⏳ 时长 <b id="timeLimitText">15s</b></span>
+      <span>🔥 连对 <b id="streak">0</b></span>
+    </div>
+  </div>
+
+  <div class="enemy-panel" id="enemyPanel">
+    <div class="enemy-title">
+      <span class="enemy-name-text">
+        <span class="enemy-face" id="enemyFace">🍏</span>
+        <span id="enemyName">瓜田史莱姆</span>
+      </span>
+      <span>攻击 <b id="enemyAtk">6</b></span>
+    </div>
+    <div class="hpbar">
+      <div id="enemyHpBar" class="hpfill enemy"></div>
+    </div>
+    <div class="bar-label">
+      <span>敌人生命</span>
+      <span id="enemyHpText">37/37</span>
+    </div>
+  </div>
+
+  <div class="quiz-card" id="quizCard">
+    <div class="timebar"><div id="timeFill" class="timefill"></div></div>
+    <div class="question" id="questionText">…</div>
+    <div class="options" id="options"></div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div id="log" class="log"></div>
+</div>
+
+<div id="rewardModal" class="modal hidden">
+  <div class="modal-box">
+    <h2>🍉 通关结算</h2>
+    <p>选择一张奖励卡，进入下一层</p>
+    <div id="rewardCards" class="cards"></div>
+  </div>
+</div>
+
+<div id="gameOverModal" class="modal hidden">
+  <div class="modal-box">
+    <h2>💀 你倒在了地下城</h2>
+    <p id="gameOverText"></p>
+    <div id="recordLine" class="record-line hidden"></div>
+    <button id="restartBtn" style="width:100%;padding:14px;border:none;border-radius:16px;background:linear-gradient(135deg,#a3e635,#22c55e);color:#06210f;font-family:inherit;font-size:18px;font-weight:900;cursor:pointer;">重新开始</button>
+  </div>
+</div>
+
+<script>
+  const el = id => document.getElementById(id);
+
+  const BEST_KEY = "knowledge-dungeon-best";
+  const MUTE_KEY = "knowledge-dungeon-mute";
+
+  const state = {
+    floor: 1,
+    watermelon: 0,
+    hp: 100,
+    maxHp: 100,
+    atk: 10,
+    shield: 0,
+    crit: 0.05,
+    lifesteal: 0,
+    comboRate: 0,
+    thorns: 0,
+    shieldPerFloor: 0,
+    watermelonBonus: 0,
+    watermelonPower: 0,
+    timeLimit: 15,
+    streak: 0,
+    answered: 0,
+    correct: 0,
+    enemy: null,
+    busy: false,
+    alive: true,
+    currentQ: null,
+    timeLeft: 15
+  };
+
+  const enemyNames = [
+    ["瓜田史莱姆", "🍏"],
+    ["蝙蝠瓜", "🦇"],
+    ["骷髅瓜兵", "💀"],
+    ["石像瓜卫", "🗿"],
+    ["藤蔓怪", "🌿"],
+    ["地下瓜虫", "🐛"],
+    ["瓜妖", "👺"],
+    ["瓜王守卫", "🛡️"]
+  ];
+
+  const bossNames = [
+    ["西瓜暴君", "🍉"],
+    ["黑暗瓜神", "🌚"],
+    ["万年瓜祖", "🐲"]
+  ];
+
+  // ============================================================
+  // 题库：q 题目 / options 选项 / answer 正确下标 / d 难度 1★ 2★★ 3★★★ 4★★★★
+  // d1-3 为知识题，d4 为 DeepSeek 等大厂面试档（20 层后出现）。
+  // 想换主题直接替换这个数组即可。
+  // ============================================================
+  const questionBank = [
+    // ---------- ★ 基础 ----------
+    { q: "“AI”的中文全称是？", options: ["人工智能", "自动仪器", "模拟接口", "高级迭代"], answer: 0, d: 1 },
+    { q: "ChatGPT 本质上是什么类型的工具？", options: ["AI 对话助手", "视频剪辑软件", "杀毒软件", "浏览器"], answer: 0, d: 1 },
+    { q: "机器学习中“监督学习”是指？", options: ["用带标签的数据训练", "老师盯着学生写代码", "监督显卡温度", "人工手动调参数"], answer: 0, d: 1 },
+    { q: "“无监督学习”的典型任务是？", options: ["把数据聚类分组", "按标签分类", "人工标注", "实时渲染"], answer: 0, d: 1 },
+    { q: "图像分类任务的输出是？", options: ["类别标签", "一段音频", "一张新图片", "模型参数"], answer: 0, d: 1 },
+    { q: "语音识别技术的作用是？", options: ["把语音转成文字", "把文字转成语音", "压缩音频", "合成人脸"], answer: 0, d: 1 },
+    { q: "“深度学习”中的“深度”指的是？", options: ["神经网络层数多", "理解问题很深刻", "数据存储很深", "水池很深"], answer: 0, d: 1 },
+    { q: "训练大型 AI 模型最常用的硬件是？", options: ["GPU", "机械硬盘", "打印机", "路由器"], answer: 0, d: 1 },
+    { q: "以下哪个是 AI 绘图工具？", options: ["Midjourney", "Excel", "Word", "记事本"], answer: 0, d: 1 },
+    { q: "ChatGPT 的开发者是？", options: ["OpenAI", "微软亚洲研究院", "Facebook", "华为"], answer: 0, d: 1 },
+    { q: "文心一言是哪家公司的产品？", options: ["百度", "腾讯", "小米", "京东"], answer: 0, d: 1 },
+    { q: "通义千问是哪家公司的大模型？", options: ["阿里巴巴", "百度", "网易", "搜狐"], answer: 0, d: 1 },
+    { q: "讯飞星火大模型属于哪家公司？", options: ["科大讯飞", "中兴", "大疆", "比亚迪"], answer: 0, d: 1 },
+    { q: "腾讯自研的大模型叫？", options: ["混元", "文心", "盘古", "星辰"], answer: 0, d: 1 },
+    { q: "豆包是哪家公司的 AI 助手？", options: ["字节跳动", "快手", "小红书", "B 站"], answer: 0, d: 1 },
+    { q: "“AI 换脸”伪造技术通常被称为？", options: ["Deepfake", "Blockchain", "Metaverse", "Web3.0"], answer: 0, d: 1 },
+    { q: "“算法”最贴近的含义是？", options: ["解决问题的明确计算步骤", "一种编程语言", "一个数据库", "一种显卡"], answer: 0, d: 1 },
+    { q: "传统电子表格求和公式与 AI 的根本区别是？", options: ["前者按固定规则计算，AI 从数据中学习规律", "前者更智能", "AI 不能算数", "没有区别"], answer: 0, d: 1 },
+    { q: "人工神经元的基本操作是？", options: ["加权求和后做非线性变换", "存储文件", "渲染像素", "收发网络包"], answer: 0, d: 1 },
+    { q: "机器学习中的“模型”指的是？", options: ["从数据中学到的参数化函数", "一个手机型号", "数据库表结构", "网页模板"], answer: 0, d: 1 },
+    { q: "ChatGPT 最初免费版基于的模型是？", options: ["GPT-3.5", "GPT-2", "BERT", "LLaMA"], answer: 0, d: 1 },
+    { q: "AI 客服系统主要依赖哪类技术？", options: ["自然语言处理", "图形渲染", "区块链", "视频编解码"], answer: 0, d: 1 },
+    { q: "OCR 技术指的是？", options: ["光学字符识别", "在线课程推荐", "源代码审查", "光标定位"], answer: 0, d: 1 },
+    { q: "推荐系统的经典基础算法是？", options: ["协同过滤", "快速排序", "哈希查找", "冒泡排序"], answer: 0, d: 1 },
+    { q: "人脸识别属于哪个 AI 领域？", options: ["计算机视觉", "语音合成", "知识图谱", "运筹优化"], answer: 0, d: 1 },
+    { q: "AI 作曲、AI 写诗属于哪类 AI？", options: ["生成式 AI", "判别式 AI", "规则引擎", "搜索引擎"], answer: 0, d: 1 },
+    { q: "ChatGPT 生成一段话的基本方式是？", options: ["逐个预测下一个词", "从网盘下载现成文章", "检索数据库原文", "随机拼字"], answer: 0, d: 1 },
+    { q: "算力单位 FLOPS 表示？", options: ["每秒浮点运算次数", "每秒文件数", "每帧像素数", "每秒请求数"], answer: 0, d: 1 },
+    { q: "图灵测试用于判断什么？", options: ["机器能否表现得像人一样对话", "显卡性能", "网速快慢", "代码是否开源"], answer: 0, d: 1 },
+    { q: "“数据标注”是指？", options: ["给数据打上标签供模型学习", "给硬盘贴标签", "给代码加注释", "给模型改名"], answer: 0, d: 1 },
+    { q: "AI 生成内容的通用缩写是？", options: ["AIGC", "O2O", "B2B", "P2P"], answer: 0, d: 1 },
+    { q: "当前大多数 AI 属于？", options: ["弱人工智能（专用任务）", "强人工智能", "超人工智能", "生物智能"], answer: 0, d: 1 },
+    { q: "“强人工智能（AGI）”指的是？", options: ["具备与人类相当的通用智能", "算力更强的显卡", "更大的模型文件", "更快的网络"], answer: 0, d: 1 },
+    { q: "验证码让你“选出所有红绿灯”，客观上是在？", options: ["为图像识别积累标注数据", "测试你的视力", "防止你上网", "训练验证码本身"], answer: 0, d: 1 },
+    { q: "英伟达（NVIDIA）因什么业务在 AI 浪潮中成为巨头？", options: ["AI 算力 GPU", "社交软件", "外卖平台", "智能手机"], answer: 0, d: 1 },
+    { q: "以下哪个不是人工智能三大学派之一？", options: ["烹调学派", "符号主义", "连接主义", "行为主义"], answer: 0, d: 1 },
+    { q: "“机器翻译”的作用是？", options: ["把一种语言自动转成另一种", "把语音变音乐", "压缩文本", "生成验证码"], answer: 0, d: 1 },
+    { q: "自动驾驶分级中 L4 大致指？", options: ["限定场景内完全无需人工接管", "必须人开车", "只有导航功能", "遥控玩具车"], answer: 0, d: 1 },
+    { q: "“开源”软件的含义是？", options: ["公开源代码，允许使用和修改", "必须免费赠送硬件", "只能在 Linux 运行", "没有作者"], answer: 0, d: 1 },
+    { q: "训练数据和测试数据应该？", options: ["分开，用没见过的数据检验泛化", "完全相同", "测试集越大越好不管训练", "互相覆盖"], answer: 0, d: 1 },
+    { q: "“智能音箱”听懂你说的话依赖？", options: ["语音识别 + 自然语言理解", "蓝牙配对", "陀螺仪", "摄像头成像"], answer: 0, d: 1 },
+
+    // ---------- ★★ 进阶 ----------
+    { q: "著名论文《Attention Is All You Need》提出了哪种架构？", options: ["Transformer", "RNN", "CNN", "LSTM"], answer: 0, d: 2 },
+    { q: "ChatGPT 首次公开发布是在哪一年？", options: ["2020 年", "2021 年", "2022 年", "2023 年"], answer: 2, d: 2 },
+    { q: "GPT-3 的参数量大约是？", options: ["15 亿", "150 亿", "1750 亿", "1.75 万亿"], answer: 2, d: 2 },
+    { q: "AI 领域常说的“幻觉（Hallucination）”指的是？", options: ["模型生成看似合理但实际错误的内容", "模型训练时显卡过热", "模型输出速度变慢", "模型文件损坏"], answer: 0, d: 2 },
+    { q: "2016 年击败围棋世界冠军李世石的是？", options: ["深蓝", "AlphaGo", "Watson", "Siri"], answer: 1, d: 2 },
+    { q: "RLHF 的全称含义是？", options: ["基于人类反馈的强化学习", "递归损失哈希函数", "随机森林混合算法", "实时语言过滤"], answer: 0, d: 2 },
+    { q: "LoRA 高效微调技术的核心思想是？", options: ["冻结原模型，只训练低秩附加矩阵", "全部参数重新训练", "压缩成 int4 再训练", "遗传算法搜超参"], answer: 0, d: 2 },
+    { q: "把大模型的“温度（temperature）”调高，输出会？", options: ["更加随机和多样", "更加确定", "速度更快", "显存更省"], answer: 0, d: 2 },
+    { q: "GPT-4 正式发布的时间是？", options: ["2022 年 11 月", "2023 年 3 月", "2023 年 11 月", "2024 年 5 月"], answer: 1, d: 2 },
+    { q: "以下哪个是文生图模型？", options: ["GPT-4", "BERT", "Stable Diffusion", "AlphaFold"], answer: 2, d: 2 },
+    { q: "在 LLM 中，“Token”指的是？", options: ["文本切分后的最小处理单元", "显卡算力单位", "训练轮数", "数据库索引"], answer: 0, d: 2 },
+    { q: "RLHF 流程中“奖励模型（Reward Model）”的作用是？", options: ["给模型的输出打分，指导策略优化", "给用户发优惠券", "加密模型权重", "压缩训练数据"], answer: 0, d: 2 },
+    { q: "大模型的“上下文窗口（Context Window）”指？", options: ["一次能处理的最大文本长度", "模型界面大小", "训练数据路径", "更新频率"], answer: 0, d: 2 },
+    { q: "RAG 的中文含义是？", options: ["检索增强生成", "随机注意力生成", "递归对抗博弈", "强化对齐引导"], answer: 0, d: 2 },
+    { q: "“思维链（Chain-of-Thought）”提示的作用是？", options: ["引导模型分步推理，提升复杂问题表现", "让输出更简短", "减少参数量", "防止联网"], answer: 0, d: 2 },
+    { q: "“多模态大模型”指的是能处理什么？", options: ["文本、图像、音频等多种输入", "只能文本", "只能图像", "只能代码"], answer: 0, d: 2 },
+    { q: "Claude 系列模型由哪家公司开发？", options: ["Anthropic", "Meta", "百度", "英伟达"], answer: 0, d: 2 },
+    { q: "Gemini 系列模型由哪家公司开发？", options: ["Google", "OpenAI", "亚马逊", "腾讯"], answer: 0, d: 2 },
+    { q: "Llama 系列开源模型由谁发布？", options: ["Meta", "微软", "苹果", "Adobe"], answer: 0, d: 2 },
+    { q: "DeepSeek（深度求索）总部位于中国哪座城市？", options: ["北京", "深圳", "上海", "杭州"], answer: 3, d: 2 },
+    { q: "BERT 的架构特点是？", options: ["双向 Transformer 编码器", "单向自回归解码器", "卷积神经网络", "循环神经网络"], answer: 0, d: 2 },
+    { q: "机器学习中“过拟合”指的是？", options: ["训练集表现好但新数据上泛化差", "训练太快", "参数太少", "显存溢出"], answer: 0, d: 2 },
+    { q: "模型“训练”和“推理”的区别是？", options: ["训练更新参数，推理用训练好的模型生成输出", "没有区别", "训练在 CPU，推理在 GPU", "训练处理文本，推理处理图像"], answer: 0, d: 2 },
+    { q: "“知识蒸馏（Distillation）”指的是？", options: ["用大模型的输出指导训练更小的模型", "权重转整数", "删神经元", "合并模型"], answer: 0, d: 2 },
+    { q: "MoE（混合专家）架构的核心思想是？", options: ["每次只激活部分专家网络，节省算力", "所有专家全量同时运行", "用多个小数据集分别训练", "专家人工标注数据"], answer: 0, d: 2 },
+    { q: "AI“对齐（Alignment）”的主要目标是？", options: ["让模型行为符合人类意图和价值观", "参数数量对齐硬件", "数据格式统一", "多个模型输出一致"], answer: 0, d: 2 },
+    { q: "“少样本提示（Few-shot Prompting）”是指？", options: ["在提示中给出少量示例让模型模仿", "只训练几个 epoch", "只部署几个副本", "几条数据完成预训练"], answer: 0, d: 2 },
+    { q: "GPU 训练大模型高效，主要因为？", options: ["擅长大规模并行矩阵运算", "内存比 CPU 大", "不需要电力", "自带操作系统"], answer: 0, d: 2 },
+    { q: "Scaling Law（规模定律）揭示了什么？", options: ["模型性能随参数、数据、算力增长可预测提升", "模型越大温度越高", "数据越多越过拟合", "算力翻倍价格减半"], answer: 0, d: 2 },
+    { q: "OpenAI 的 o1 系列模型主打的特性是？", options: ["输出前进行更长的推理思考", "生成图片更清晰", "支持更多语言", "手机本地运行"], answer: 0, d: 2 },
+    { q: "Sora 是哪种类型的模型？", options: ["文生视频", "语音识别", "代码补全", "蛋白质折叠"], answer: 0, d: 2 },
+    { q: "Embedding（嵌入向量）的主要用途是？", options: ["以向量表示语义，便于相似度检索", "压缩模型体积", "加密数据", "渲染界面"], answer: 0, d: 2 },
+    { q: "2024 年诺贝尔物理学奖授予了哪一领域的先驱？", options: ["神经网络与机器学习", "量子计算", "可控核聚变", "引力波"], answer: 0, d: 2 },
+    { q: "AI Agent（智能体）的典型能力是？", options: ["调用工具、规划步骤、自主完成任务", "只能聊天", "只能翻译", "只能画图"], answer: 0, d: 2 },
+    { q: "“提示词注入（Prompt Injection）”攻击指的是？", options: ["通过输入文本诱导模型违背系统指令", "物理破坏服务器", "窃取显卡算力", "篡改模型文件"], answer: 0, d: 2 },
+    { q: "以下哪个常用于评测语言模型的知识能力？", options: ["MMLU", "FPS", "PNG", "HTTP"], answer: 0, d: 2 },
+    { q: "对模型做“量化（Quantization）”的目的是？", options: ["降低数值精度，减小体积、加速推理", "提高文采", "增加训练轮数", "扩大词表"], answer: 0, d: 2 },
+    { q: "Transformer 中“自注意力机制”的作用是？", options: ["让序列中每个位置关注其他位置的信息", "自动生成封面图", "节省电力", "防止重复输出"], answer: 0, d: 2 },
+    { q: "“开源权重模型”是指？", options: ["公开模型权重，可下载和本地部署", "只能 API 调用", "用 C 语言编写", "必须租算力"], answer: 0, d: 2 },
+    { q: "下列哪项不属于 LLM 的典型训练阶段？", options: ["数据库索引优化", "预训练", "监督微调（SFT）", "基于人类反馈的强化学习"], answer: 0, d: 2 },
+    { q: "多轮对话中，模型“记住”前文的方式是？", options: ["把历史对话拼进上下文窗口再输入", "内置永久记忆硬盘", "自动写入云数据库", "显卡缓存永久保存"], answer: 0, d: 2 },
+    { q: "“上下文学习（In-Context Learning）”指的是？", options: ["不更新参数，仅凭提示中的示例适应任务", "必须重新训练", "在数据库中学习", "联网搜索答案"], answer: 0, d: 2 },
+    { q: "生成式解码策略“Top-p 采样”是指？", options: ["从累计概率达到 p 的候选词中随机采样", "只选概率最高的词", "随机选任意词", "按字母序选词"], answer: 0, d: 2 },
+    { q: "缓解大模型“幻觉”的常见方法是？", options: ["用 RAG 引入外部资料并要求标注来源", "调高温度", "减少训练数据", "删掉部分网络层"], answer: 0, d: 2 },
+    { q: "“向量数据库”在 AI 应用中的典型用途是？", options: ["存储嵌入向量，支持语义相似度检索", "渲染 3D 场景", "压缩视频", "管理账号密码"], answer: 0, d: 2 },
+    { q: "《Attention Is All You Need》论文的主要作者来自？", options: ["Google", "OpenAI", "Meta", "清华大学"], answer: 0, d: 2 },
+    { q: "AI 绘图中“提示词（Prompt）”的作用是？", options: ["描述期望的画面内容与风格", "给显卡超频", "选择压缩格式", "登录账号"], answer: 0, d: 2 },
+    { q: "以下哪个属于“判别式任务”？", options: ["判断图片中是否包含猫", "写一首诗", "生成一段代码", "续写一个故事"], answer: 0, d: 2 },
+    { q: "“推理成本”通常以什么单位衡量？", options: ["每百万 token 的价格", "每 GB 显存租金", "每秒帧数", "每瓦特温度"], answer: 0, d: 2 },
+    { q: "“自回归生成”的含义是？", options: ["逐个生成，且每个输出依赖之前的结果", "一次生成所有内容", "回到过去改参数", "自动回归测试"], answer: 0, d: 2 },
+    { q: "BERT 和 GPT 的核心区别是？", options: ["BERT 双向编码理解，GPT 自回归生成", "BERT 更大", "GPT 不能处理中文", "没有区别"], answer: 0, d: 2 },
+    { q: "“预训练 + 微调”范式是指？", options: ["先海量数据学通用能力，再用小数据适配任务", "先微调再预训练", "同时进行两者", "只做预训练"], answer: 0, d: 2 },
+    { q: "Transformer 中“位置编码”的作用是？", options: ["让模型感知 token 的先后顺序", "加密位置信息", "定位服务器机房", "省电"], answer: 0, d: 2 },
+    { q: "Dropout 的作用是？", options: ["训练时随机失活部分神经元，防止过拟合", "删除数据", "断开网络", "降低精度"], answer: 0, d: 2 },
+    { q: "早期 RNN 训练深层长序列的主要困难是？", options: ["梯度消失/爆炸", "内存太小", "没有数据", "没有键盘"], answer: 0, d: 2 },
+    { q: "LSTM 相比普通 RNN 的主要改进是？", options: ["门控机制缓解长程依赖问题", "参数更少", "不需要训练", "只能处理图像"], answer: 0, d: 2 },
+    { q: "“反向传播”是做什么的？", options: ["从损失出发逐层计算梯度以更新参数", "把模型倒着运行", "回滚版本", "网络反向代理"], answer: 0, d: 2 },
+    { q: "交叉熵损失最常用于哪类任务？", options: ["分类", "下载", "压缩", "渲染"], answer: 0, d: 2 },
+    { q: "“学习率”设置过大会导致？", options: ["训练震荡甚至发散", "训练太慢", "模型变小", "数据丢失"], answer: 0, d: 2 },
+    { q: "“Batch Size”的含义是？", options: ["一次前向/反向传播使用的样本数", "模型层数", "数据集总数", "训练总轮数"], answer: 0, d: 2 },
+    { q: "“Epoch”的含义是？", options: ["完整遍历一次训练集", "一次迭代", "一个神经元", "一块显卡"], answer: 0, d: 2 },
+    { q: "“早停（Early Stopping）”的策略是？", options: ["验证集表现不再提升时停止训练", "第一天就停", "loss 为 0 才停", "显存不足就停"], answer: 0, d: 2 },
+    { q: "语言模型指标“困惑度（Perplexity）”，越低说明？", options: ["模型对文本的预测能力越强", "模型越困惑", "训练出错", "数据越乱"], answer: 0, d: 2 },
+    { q: "“KV Cache”在推理中的作用是？", options: ["缓存历史注意力键值，避免重复计算加速生成", "缓存网页", "存图片", "存日志"], answer: 0, d: 2 },
+    { q: "“投机解码（Speculative Decoding）”的思想是？", options: ["小模型草拟、大模型验证，加速生成", "随机猜答案", "提前下载结果", "并行开多台服务器"], answer: 0, d: 2 },
+    { q: "vLLM 是一款？", options: ["高吞吐的大模型推理引擎", "视频剪辑软件", "虚拟机", "数据库"], answer: 0, d: 2 },
+    { q: "GitHub Copilot 类工具的主要用途是？", options: ["代码补全与生成", "管理 Git 仓库", "绘制界面", "测试网速"], answer: 0, d: 2 },
+    { q: "“temperature = 0”时模型输出倾向于？", options: ["几乎确定，总选最高概率词", "最随机", "最长", "最短"], answer: 0, d: 2 },
+    { q: "“重复惩罚（Repetition Penalty）”的目的是？", options: ["防止生成内容反复重复", "惩罚用户", "增加重复", "降低速度"], answer: 0, d: 2 },
+    { q: "BPE 是大模型常用的？", options: ["分词（Tokenizer）算法", "优化器", "显卡驱动", "数据库协议"], answer: 0, d: 2 },
+    { q: "云计算“按量付费”的含义是？", options: ["按实际使用的资源量计费", "包月无限用", "一次性买断", "完全免费"], answer: 0, d: 2 },
+    { q: "IaaS、PaaS、SaaS 中，用户管理负担最小的是？", options: ["SaaS（软件即服务）", "IaaS", "PaaS", "本地机房"], answer: 0, d: 2 },
+    { q: "“私有化部署”大模型的含义是？", options: ["模型部署在客户自己的环境里", "只能手机使用", "必须联网调 API", "部署在公共场合"], answer: 0, d: 2 },
+    { q: "大模型 API 常见的计费模式是？", options: ["按输入/输出 token 数量计费", "按用户身高计费", "包年不限量", "按网页点击"], answer: 0, d: 2 },
+    { q: "华为自研的 AI 算力芯片系列是？", options: ["昇腾（Ascend）", "天玑", "骁龙", "麒麟 9000s"], answer: 0, d: 2 },
+    { q: "“混合云”指的是？", options: ["公有云与私有云组合使用", "两种颜色的云", "雨云和卷云", "双系统电脑"], answer: 0, d: 2 },
+
+    // ---------- ★★★ 高阶 ----------
+    { q: "Transformer 论文的 8 位作者后来大多选择了？", options: ["离开 Google 创办 AI 公司", "转行当老师", "退休", "去苹果做芯片"], answer: 0, d: 3 },
+    { q: "大模型“涌现能力（Emergent Abilities）”指？", options: ["规模跨过阈值后突然出现的新能力", "模型自己冒出来", "能力线性增长", "人力涌现"], answer: 0, d: 3 },
+    { q: "Chinchilla 定律（DeepMind）给出的建议是？", options: ["参数量与训练数据量应大致同比例扩展", "参数越大越好不管数据", "数据越多越好不管参数", "只管堆算力"], answer: 0, d: 3 },
+    { q: "GPT-4 技术报告刻意没有披露的信息是？", options: ["参数量与架构细节", "发布日期", "评测成绩", "合作公司"], answer: 0, d: 3 },
+    { q: "Mamba 架构的理论基础是？", options: ["状态空间模型（SSM）", "生成对抗网络", "决策树", "支持向量机"], answer: 0, d: 3 },
+    { q: "RWKV 架构的特点是？", options: ["兼具 RNN 的推理效率与 Transformer 的可并行训练", "纯 CNN", "纯人工规则", "必须云上运行"], answer: 0, d: 3 },
+    { q: "Anthropic 的创始团队主要来自？", options: ["前 OpenAI 员工", "前百度员工", "前腾讯员工", "纯学术界无工业界经验"], answer: 0, d: 3 },
+    { q: "OpenAI 2015 年成立时的组织性质是？", options: ["非营利研究机构", "上市公司", "国企", "个人工作室"], answer: 0, d: 3 },
+    { q: "Sam Altman 在加入 OpenAI 前，担任过？", options: ["Y Combinator 总裁", "谷歌 CEO", "微软 CTO", "特斯拉董事长"], answer: 0, d: 3 },
+    { q: "1966 年诞生的早期聊天机器人 ELIZA 是？", options: ["基于关键词模式的模拟心理治疗师", "第一台计算机", "一款游戏", "机器宠物"], answer: 0, d: 3 },
+    { q: "符号主义 AI 的代表成果是？", options: ["专家系统", "卷积网络", "扩散模型", "大语言模型"], answer: 0, d: 3 },
+    { q: "AI 发展史上的“AI 寒冬”指？", options: ["资金与公众兴趣大幅退潮的阶段", "机房空调太冷", "显卡停产", "冬天不能训练"], answer: 0, d: 3 },
+    { q: "Hopfield 网络（1982）属于哪类模型？", options: ["联想记忆神经网络", "卷积网络", "决策树", "线性回归"], answer: 0, d: 3 },
+    { q: "让反向传播广为人知的 1986 年论文作者是？", options: ["Rumelhart、Hinton、Williams", "图灵和冯诺依曼", "马斯克和奥特曼", "李彦宏和马化腾"], answer: 0, d: 3 },
+    { q: "“混合精度训练”的做法是？", options: ["FP16/BF16 与 FP32 混合使用，省显存提速", "把 int 和 string 混用", "精度打折到 50%", "两个模型取平均"], answer: 0, d: 3 },
+    { q: "“模型并行”与“数据并行”的区别是？", options: ["模型并行切分模型到多卡，数据并行各卡持有完整模型处理不同数据", "完全一样", "数据并行不需要多卡", "模型并行只能单卡"], answer: 0, d: 3 },
+    { q: "微软 DeepSpeed 的“ZeRO”优化核心是？", options: ["分片存储优化器状态与梯度，降低显存冗余", "把学习率归零", "删除优化器", "零样本学习"], answer: 0, d: 3 },
+    { q: "NVLink 的作用是？", options: ["GPU 之间的高速互联", "无线网卡", "显卡风扇接口", "显示器接口"], answer: 0, d: 3 },
+    { q: "大规模 AI 训练集群常用的组网技术是？", options: ["InfiniBand", "蓝牙", "Zigbee", "NFC"], answer: 0, d: 3 },
+    { q: "TPU 是哪家公司自研的 AI 芯片？", options: ["Google", "苹果", "AMD", "高通"], answer: 0, d: 3 },
+    { q: "“模型水印”技术的目的是？", options: ["识别某段内容是否由特定 AI 生成", "给显卡防伪", "防止文件被压缩", "加密网络"], answer: 0, d: 3 },
+    { q: "C2PA 标准关注的内容是？", options: ["媒体内容的来源与真实性追溯", "游戏手柄接口", "网页配色", "键盘布局"], answer: 0, d: 3 },
+    { q: "对大模型“越狱（Jailbreak）”指的是？", options: ["通过话术绕过模型的安全限制", "把模型移出机房", "解锁显卡功耗墙", "破解手机 root"], answer: 0, d: 3 },
+    { q: "AI 安全中的“Red Teaming（红队测试）”是？", options: ["对抗性地攻击模型以发现安全漏洞", "给模型涂红色", "优化显卡散热", "数据可视化"], answer: 0, d: 3 },
+    { q: "欧盟《AI Act》的主要特点是？", options: ["按风险等级分级监管 AI 应用", "完全禁止 AI", "只管游戏 AI", "只针对某几家中国公司"], answer: 0, d: 3 },
+    { q: "在中国，面向公众的生成式 AI 服务通常需要？", options: ["完成算法/大模型备案", "每日两次报税", "购买海外服务器", "无任何要求"], answer: 0, d: 3 },
+    { q: "SWE-bench 基准评测的是？", options: ["修复真实 GitHub issue 的软件工程能力", "英语听力", "图像质量", "网速"], answer: 0, d: 3 },
+    { q: "HumanEval 基准评测的是？", options: ["代码生成的功能正确性", "人类道德水平", "语音情感", "绘画技巧"], answer: 0, d: 3 },
+    { q: "GSM8K 基准主要考察模型的？", options: ["小学数学应用题推理", "吉他演奏", "视频剪辑", "文件压缩"], answer: 0, d: 3 },
+    { q: "Chatbot Arena 的排名机制是？", options: ["用户匿名盲测两模型输出并投票，按 Elo 排名", "官方打分", "厂商自评", "按参数量排序"], answer: 0, d: 3 },
+    { q: "运营 Chatbot Arena 的组织是？", options: ["LMSYS", "W3C", "IEEE", "ISO"], answer: 0, d: 3 },
+    { q: "RLAIF 与 RLHF 的区别在于反馈来自？", options: ["AI 模型而非人类", "外星人", "随机数", "游戏引擎"], answer: 0, d: 3 },
+    { q: "“长文本建模”的核心挑战是？", options: ["注意力计算量随序列长度平方增长", "字数太多打字慢", "显示器不够宽", "复制粘贴费劲"], answer: 0, d: 3 },
+    { q: "GQA（分组查询注意力）的主要目的是？", options: ["减少推理时 KV 缓存的显存占用", "提高画质", "增强音效", "加快下载"], answer: 0, d: 3 },
+    { q: "YaRN / RoPE 缩放技术用于？", options: ["让模型外推到超过训练长度的上下文", "给模型起名", "压缩词表", "加密权重"], answer: 0, d: 3 },
+    { q: "“DPO（直接偏好优化）”相比 RLHF 的特点是？", options: ["省去奖励模型，直接用偏好数据优化策略", "效果一定更差", "需要亿级人工标注", "只能用于图像"], answer: 0, d: 3 },
+    { q: "“Constitutional AI（宪法式 AI）”由哪家公司提出？", options: ["Anthropic", "OpenAI", "Meta", "字节跳动"], answer: 0, d: 3 },
+    { q: "2012 年 ImageNet 竞赛中引爆深度学习浪潮的网络是？", options: ["AlexNet", "VGG", "ResNet", "MobileNet"], answer: 0, d: 3 },
+    { q: "“深度学习三巨头”Hinton、LeCun、Bengio 获得的是？", options: ["2018 年图灵奖", "2018 年奥斯卡", "2020 年诺贝尔化学奖", "菲尔兹奖"], answer: 0, d: 3 },
+    { q: "GAN（生成对抗网络）的提出者是？", options: ["Ian Goodfellow", "Geoffrey Hinton", "Yann LeCun", "吴恩达"], answer: 0, d: 3 },
+    { q: "大模型训练的能源争议主要因为？", options: ["训练与推理耗电巨大", "显卡太重", "办公室太小", "代码太长"], answer: 0, d: 3 },
+    { q: "“TruthfulQA”基准主要评测模型的？", options: ["回答真实性问题时的诚实度", "打字速度", "内存占用", "压缩率"], answer: 0, d: 3 },
+    { q: "“推理 API”与“私有化部署”的主要权衡是？", options: ["API 启动成本低但按量持续计费，私有化前期投入高但数据可控", "API 一定更贵", "私有化不需要 GPU", "没有权衡"], answer: 0, d: 3 },
+    { q: "“大模型一体机”通常指？", options: ["软硬件预集成、开箱即用的模型交付方案", "一台平板电脑", "机箱风扇", "显示器套装"], answer: 0, d: 3 },
+    { q: "“蒸馏小模型”在商业上的主要价值是？", options: ["推理成本低，适合大规模部署", "效果永远超过大模型", "不需要数据", "不需要芯片"], answer: 0, d: 3 },
+    { q: "国产 AI 芯片公司“寒武纪”主营？", options: ["AI 推理/训练加速芯片", "羽绒服", "运动鞋", "电动牙刷"], answer: 0, d: 3 },
+    { q: "“多查询注意力（MQA/GQA）”优化的资源是？", options: ["推理阶段的显存带宽与占用", "训练数据存储", "屏幕刷新率", "键盘延迟"], answer: 0, d: 3 },
+    { q: "“Grok”系列模型由哪家公司开发？", options: ["xAI", "OpenAI", "Meta", "三星"], answer: 0, d: 3 },
+    { q: "“Mistral”是哪个国家的 AI 公司？", options: ["法国", "德国", "日本", "加拿大"], answer: 0, d: 3 },
+    { q: "“Stargate（星际之门）”计划与哪家公司相关？", options: ["OpenAI 与软银等的 AI 基建投资计划", "任天堂", "索尼影业", "中影"], answer: 0, d: 3 },
+    { q: "“Function Calling / Tool Use”指模型能？", options: ["按约定格式调用外部工具与接口", "自己编译代码", "更换显卡", "修改系统时间"], answer: 0, d: 3 },
+    { q: "“Agentic RAG”相比传统 RAG 的改进是？", options: ["由智能体自主决定检索时机、次数与来源", "完全不用检索", "只检索一次", "不再需要向量库"], answer: 0, d: 3 },
+    { q: "“模型上下文协议（MCP）”由哪家公司推出？", options: ["Anthropic", "Google", "腾讯", "IBM"], answer: 0, d: 3 },
+    { q: "“多智能体协作”系统的典型风险是？", options: ["误差在智能体之间传递放大", "电费为零", "永远不会出错", "不需要提示词"], answer: 0, d: 3 },
+    { q: "“合成数据”训练模型的主要风险是？", options: ["误差与偏见被放大，分布逐渐偏移", "磁盘不够", "颜色不对", "语法太美"], answer: 0, d: 3 },
+    { q: "“模型坍塌（Model Collapse）”通常发生在？", options: ["长期用模型自身输出反复训练自己", "训练一轮就停", "换新显卡", "温度调低"], answer: 0, d: 3 },
+    { q: "“世界模型（World Model）”研究方向的目标是？", options: ["让模型学习环境的物理与因果规律并预测演化", "生成世界地图", "3D 打印", "卫星遥感"], answer: 0, d: 3 },
+    { q: "“测试时计算（Test-time Compute）”指？", options: ["推理阶段投入更多算力换取更强表现", "测试网速", "压测服务器", "出厂检验"], answer: 0, d: 3 },
+    { q: "“奖励黑客（Reward Hacking）”指？", options: ["模型钻奖励函数空子得高分却偏离真实目标", "黑客攻击显卡", "游戏外挂", "盗号"], answer: 0, d: 3 },
+    { q: "“稀疏注意力（Sparse Attention）”的动机是？", options: ["只计算重要位置的注意力以降低开销", "让注意力更集中精神", "节省纸张", "美化输出"], answer: 0, d: 3 },
+    { q: "“张量并行”切分的对象是？", options: ["把单个算子的张量运算切分到多卡", "把数据集切片", "把日志分段", "把屏幕分区"], answer: 0, d: 3 },
+    { q: "“流水线并行（Pipeline Parallelism）”的短板是？", options: ["存在流水线气泡，设备利用率受影响", "完全不能训练", "只能单卡", "不需要通信"], answer: 0, d: 3 },
+    { q: "“梯度检查点（Gradient Checkpointing）”是？", options: ["用重复前向计算换显存的省显存技巧", "检查梯度笔误", "显卡质检", "断点续传"], answer: 0, d: 3 },
+    { q: "“EMA（指数滑动平均）权重”常用于？", options: ["稳定评估与推理的模型权重", "加速硬盘", "美化界面", "压缩日志"], answer: 0, d: 3 },
+    { q: "“Curriculum Learning（课程学习）”指？", options: ["由易到难安排训练样本", "上网课", "学习排课软件", "给模型补课"], answer: 0, d: 3 },
+    { q: "“Beam Search”与贪心解码的区别是？", options: ["每步保留多条候选序列，最终选整体最优", "完全随机", "只用于图像", "不需要概率"], answer: 0, d: 3 },
+    { q: "“幻觉评测集 HaluEval”用于？", options: ["系统性评估模型幻觉程度", "评估显卡散热", "评估网速", "评估键盘手感"], answer: 0, d: 3 },
+    { q: "“Multimodal CoT”结合了？", options: ["多模态输入与分步推理", "多模态输出与压缩", "音频与字幕", "视频与弹幕"], answer: 0, d: 3 },
+
+    // ---------- ★★★★ 大厂面试档（DeepSeek / OpenAI / 国内厂高频） ----------
+    { q: "【DeepSeek】MLA（多头潜在注意力）的核心收益是？", options: ["低秩压缩 KV 缓存，大幅降低推理显存", "提高 softmax 数值精度", "完全取消注意力机制", "加速数据标注"], answer: 0, d: 4 },
+    { q: "【DeepSeek】GRPO 与 PPO 的关键区别是？", options: ["用组内相对奖励替代 critic 价值网络", "GRPO 不需要奖励", "GRPO 只能用于图像", "PPO 已被证明无效"], answer: 0, d: 4 },
+    { q: "【DeepSeek】MTP（多 Token 预测）训练目标的意义是？", options: ["一次预测多个未来位置，提升数据效率并可为投机解码提供草稿模块", "让模型一次输出整篇文章", "减少词表大小", "替代注意力机制"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DeepSeek-V3 的一大工程亮点是？", options: ["在 FP8 混合精度下完成大规模预训练", "纯 CPU 训练", "不用 GPU 集群", "训练数据全部人工撰写"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DeepSeek-R1 的推理能力主要来自？", options: ["以可验证奖励为主的大规模强化学习", "更大的词表", "人工编写全部推理规则", "更高的上下文窗口"], answer: 0, d: 4 },
+    { q: "【DeepSeek】R1 论文中的 “aha moment” 指？", options: ["模型在 RL 中自发学会回头反思、重新检查答案", "训练一次收敛", "人工标注的顿悟", "显卡利用率峰值"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DualPipe 的优化目标是？", options: ["双向流水线重叠计算与通信，减少流水线气泡", "双倍显卡显存", "双层防火墙", "双路供电"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DeepSeekMoE 的结构特点是？", options: ["细粒度专家切分 + 共享专家隔离", "只用一个专家", "专家越多越好不设上限", "专家由人工指定"], answer: 0, d: 4 },
+    { q: "【DeepSeek】R1-Distill 小模型的训练方式是？", options: ["用 R1 生成的推理数据对 Qwen/Llama 等做微调", "从头预训练", "只训练 embedding 层", "直接量化 R1"], answer: 0, d: 4 },
+    { q: "【DeepSeek】R1-Zero 与 R1 的关键区别是？", options: ["R1-Zero 直接纯 RL 训练，无 SFT 冷启动", "R1-Zero 是多模态模型", "R1-Zero 参数量小 10 倍", "R1-Zero 不用强化学习"], answer: 0, d: 4 },
+    { q: "【面试】self-attention 对序列长度 n 的时间复杂度是？", options: ["O(n²)", "O(n)", "O(n log n)", "O(1)"], answer: 0, d: 4 },
+    { q: "【面试】注意力分数除以 √dk 的原因是？", options: ["防止点积随维度增大方差过大，softmax 饱和导致梯度变小", "统一量纲方便求和", "防止除零", "加快 softmax 计算"], answer: 0, d: 4 },
+    { q: "【面试】softmax 的数值稳定技巧是？", options: ["先减去输入最大值再取指数", "对输入取绝对值", "四舍五入到两位小数", "乘一个很小的系数"], answer: 0, d: 4 },
+    { q: "【面试】NLP 模型普遍用 LayerNorm 而非 BatchNorm，因为？", options: ["序列长度可变且 batch 统计不稳定，按样本特征维归一化更稳", "LayerNorm 计算更快", "BatchNorm 专利限制", "BatchNorm 不支持 GPU"], answer: 0, d: 4 },
+    { q: "【面试】LLaMA 结构的三个标志性选择是？", options: ["Pre-Norm RMSNorm + SwiGLU + RoPE", "Post-Norm + GELU + 正弦编码", "BatchNorm + ReLU + 可学习绝对位置", "双向注意力 + 交叉熵 + Dropout"], answer: 0, d: 4 },
+    { q: "【面试】RMSNorm 与 LayerNorm 的区别是？", options: ["RMSNorm 去掉了均值中心化，只按均方根缩放", "RMSNorm 多了均值中心化", "RMSNorm 只用于 CNN", "没有区别"], answer: 0, d: 4 },
+    { q: "【面试】SwiGLU 属于哪类设计？", options: ["带门控的前馈网络激活设计", "注意力变体", "优化器", "位置编码"], answer: 0, d: 4 },
+    { q: "【面试】Adam 优化器结合了什么？", options: ["一阶动量与二阶矩估计的自适应学习率", "动量与随机重启", "牛顿法与模拟退火", "遗传算法与爬山法"], answer: 0, d: 4 },
+    { q: "【面试】训练初期使用 warmup 的原因是？", options: ["初始时参数不可靠，大学习率易发散，逐步升温更稳", "为了预热显卡", "为了热身数据", "随大流"], answer: 0, d: 4 },
+    { q: "【面试】梯度裁剪（gradient clipping）主要用于？", options: ["抑制梯度爆炸，稳定训练", "减少参数量", "加速下载", "美化 loss 曲线"], answer: 0, d: 4 },
+    { q: "【面试】KV Cache 的显存占用随什么增长？", options: ["序列长度、批大小、层数与 KV 维度线性增长", "只与词表大小有关", "与训练轮数有关", "与学习率有关"], answer: 0, d: 4 },
+    { q: "【面试】推理指标 TTFT 的含义是？", options: ["从发出请求到收到首 token 的时间", "每秒 token 吞吐", "训练总时长", "token 单价"], answer: 0, d: 4 },
+    { q: "【面试】推理指标 TPOT（ITL）的含义是？", options: ["生成阶段每个 token 的平均耗时", "首 token 延迟", "每秒请求数", "模型参数量"], answer: 0, d: 4 },
+    { q: "【面试】Continuous batching 的本质是？", options: ["在迭代粒度动态插入/移除请求，提高 GPU 利用率", "请求按先进先出整批处理", "把多个模型合并运行", "批大小恒定不变"], answer: 0, d: 4 },
+    { q: "【面试】GPTQ、AWQ 属于哪类技术？", options: ["训练后权重量化（PTQ）算法", "训练框架", "数据增强", "解码策略"], answer: 0, d: 4 },
+    { q: "【面试】per-group 量化相比 per-tensor 的特点是？", options: ["分组粒度更细，精度更高、元数据开销稍大", "精度一定更低", "不需要校准数据", "只能量化激活值"], answer: 0, d: 4 },
+    { q: "【面试】RLHF 三阶段的标准顺序是？", options: ["SFT → 奖励模型训练 → 强化学习优化", "RL → SFT → 蒸馏", "奖励模型 → 预训练 → SFT", "预训练 → RLHF → 预训练"], answer: 0, d: 4 },
+    { q: "【面试】RLHF 中加入 KL 惩罚的目的是？", options: ["约束策略不偏离 SFT 参考模型太远，防止奖励投机", "提高训练速度", "减少显存", "替代奖励模型"], answer: 0, d: 4 },
+    { q: "【面试】Beam Search 的常见副作用是？", options: ["生成保守、重复、泛泛的“安全”文本", "一定产生错误答案", "无法用于翻译", "速度一定比采样慢不了"], answer: 0, d: 4 },
+    { q: "【面试】MinHash/LSH 在大模型数据工程中用于？", options: ["近似检测重复文档，构建去重语料", "加密训练数据", "生成词表", "评估幻觉"], answer: 0, d: 4 },
+    { q: "【面试】“数据污染（contamination）”指？", options: ["评测集内容混入训练数据导致分数虚高", "数据里混入病毒", "硬盘坏道", "标注员工互相污染"], answer: 0, d: 4 },
+    { q: "【面试】RAG 中 chunk 大小的权衡是？", options: ["太大语义稀释、太小上下文割裂，需要按场景调优", "越大越好", "越小越好", "必须等于一句话"], answer: 0, d: 4 },
+    { q: "【面试】Cross-encoder 重排比双塔（bi-encoder）召回的特点是？", options: ["精度更高，但无法预计算、更慢", "速度更快精度更低", "只能用于图像", "不需要训练"], answer: 0, d: 4 },
+    { q: "【面试】ReAct 框架的执行模式是？", options: ["思考-行动-观察交替循环", "只思考不行动", "并行所有动作", "先行动后规划"], answer: 0, d: 4 },
+    { q: "【面试】权重绑定（tie embeddings）指？", options: ["输入 embedding 与输出投影共享同一矩阵以省参数", "把多层权重相加", "两个模型互为师徒", "权重加密存储"], answer: 0, d: 4 },
+    { q: "【面试】RoPE 的巧妙之处是？", options: ["用绝对位置的计算实现相对位置的注意力效果", "完全不需要位置信息", "只支持英文", "必须配合卷积使用"], answer: 0, d: 4 },
+    { q: "【面试】NTK-aware 缩放 / YaRN 用于？", options: ["修改旋转基频，把模型外推到更长上下文", "压缩词表", "裁剪层数", "加密权重"], answer: 0, d: 4 },
+    { q: "【面试】FlashAttention 的优化本质是？", options: ["感知显存 IO，分块计算减少 HBM 读写", "把注意力改成一阶近似", "删除 softmax", "用查表代替计算"], answer: 0, d: 4 },
+    { q: "【面试】MoE 中辅助负载均衡 loss 的作用是？", options: ["防止路由塌缩到少数专家", "让所有专家输出相同", "替代路由器", "降低 loss 数值"], answer: 0, d: 4 },
+    { q: "【面试】MoE 中超出专家容量的 token 通常如何处理？", options: ["经残差直连跳过该层专家计算", "直接丢弃", "强制塞入任意专家", "触发重新训练"], answer: 0, d: 4 },
+    { q: "【面试】tokenizer 对数字处理不佳的原因是？", options: ["BPE 可能合并多位数字导致数值表示不稳定，常按数字逐位切分", "数字没语义", "数字太多导致词表爆炸", "模型看不见数字"], answer: 0, d: 4 },
+    { q: "【面试】微调导致“灾难性遗忘”的常见缓解是？", options: ["微调数据中混入通用语料回放", "调大学习率", "删掉旧数据", "只训一轮"], answer: 0, d: 4 },
+    { q: "【面试】muP 的价值在于？", options: ["让小模型上调好的超参数按规则迁移到大模型", "统一模型命名", "统一显卡接口", "多任务学习"], answer: 0, d: 4 },
+    { q: "【面试】大模型训练中遇到 loss spike 的常见工程做法是？", options: ["回滚到较早检查点并跳过可疑数据批次", "直接放弃训练", "无条件加大学习率", "删掉全部数据"], answer: 0, d: 4 },
+    { q: "【国内厂】Kimi（月之暗面）早期以什么能力出圈？", options: ["超长上下文处理", "语音合成", "自动驾驶", "区块链"], answer: 0, d: 4 },
+    { q: "【国内厂】GLM 系列模型由哪家公司研发？", options: ["智谱 AI", "小米", "美团", "拼多多"], answer: 0, d: 4 },
+    { q: "【国内厂】字节跳动的大模型研发团队名为？", options: ["Seed", "达摩院", "AI Lab（腾讯）", "无人驾驶部"], answer: 0, d: 4 },
+    { q: "【国内厂】Qwen 开源生态的特点是？", options: ["提供多种参数规模与衍生版本，被社区广泛使用", "只提供 API 不开源", "只支持英文", "只有一个参数规模"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DeepSeek-V2 首次大规模引入的技术是？", options: ["MLA（多头潜在注意力）", "卷积注意力", "循环注意力", "稀疏 PCA"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DeepSeek-V3 的总参数量与每 token 激活量约是？", options: ["总 671B，激活约 37B", "总 671B，全部激活", "总 67B，激活 6B", "总 1.8T，激活 175B"], answer: 0, d: 4 },
+    { q: "【DeepSeek】DeepSeek-V3 / R1 的权重开源协议是？", options: ["MIT 许可，可自由商用", "仅限学术研究", "完全闭源", "需按 token 付费"], answer: 0, d: 4 }, 
+    { q: "【DeepSeek】R1 的 RL 奖励设计主要包括？", options: ["答案准确率奖励 + 格式奖励", "点赞数奖励", "广告收入奖励", "随机奖励"], answer: 0, d: 4 },
+    { q: "【DeepSeek】论文披露 V3 的完整训练 GPU 成本量级约？", options: ["约 279 万 H800 GPU 小时（数百万美元级）", "数千亿美元", "完全免费", "100 亿 GPU 小时"], answer: 0, d: 4 },
+    { q: "【面试】偏差-方差权衡的正确表述是？", options: ["高偏差对应欠拟合，高方差对应过拟合", "高偏差对应过拟合", "两者是同一个概念", "与模型复杂度无关"], answer: 0, d: 4 },
+    { q: "【面试】L1 正则化相对 L2 的特点是？", options: ["更容易产生稀疏解（特征选择效果）", "永远不会欠拟合", "只能用于神经网络", "没有梯度"], answer: 0, d: 4 },
+    { q: "【面试】随机森林降低方差的核心手段是？", options: ["Bootstrap 采样 + 随机特征子集训练多棵树后集成", "加深单棵树", "减少训练数据", "提高学习率"], answer: 0, d: 4 },
+    { q: "【面试】XGBoost 属于哪类模型？", options: ["梯度提升决策树（GBDT）框架", "随机森林", "支持向量机", "神经网络"], answer: 0, d: 4 },
+    { q: "【面试】SVM 核技巧的作用是？", options: ["把数据隐式映射到高维空间，使线性不可分变得可分", "降低维度到 1", "替代标签", "加速硬盘读写"], answer: 0, d: 4 },
+    { q: "【面试】PCA 的优化目标是？", options: ["投影后方差最大（保留主要信息）的无监督降维", "分类准确率最大", "聚类中心最近", "重构 loss 为零"], answer: 0, d: 4 },
+    { q: "【面试】AUC 的统计学含义是？", options: ["随机取一正一负样本，模型给正样本更高分的概率", "准确率乘以召回率", "误差平方和", "学习率上限"], answer: 0, d: 4 },
+    { q: "【面试】处理类别不平衡的常见手段是？", options: ["重采样或调整类别权重", "删除少数类", "把多数类全标成正类", "换更大的显卡"], answer: 0, d: 4 },
+    { q: "【面试】k 折交叉验证的目的是？", options: ["更稳定地评估模型泛化能力", "增加训练数据总量", "减少超参数", "加速推理"], answer: 0, d: 4 },
+    { q: "【面试】“特征泄漏（leakage）”指？", options: ["训练时用到了预测时不该有的信息（如未来信息）", "特征列缺失", "特征文件损坏", "特征太多太乱"], answer: 0, d: 4 },
+    { q: "【面试】EM 算法的典型应用场景是？", options: ["含隐变量的参数估计（如 GMM 聚类）", "图像渲染", "网页排版", "文件压缩"], answer: 0, d: 4 },
+    { q: "【面试】早期网络用 sigmoid 深层训练困难的主要原因是？", options: ["两端饱和导致梯度消失", "没有导数", "输出不是概率", "计算太慢无法实现"], answer: 0, d: 4 },
+    { q: "【面试】ReLU 被广泛使用的理由是？", options: ["正区间梯度恒为 1，缓解梯度消失且计算便宜", "输出恒为正数", "有界防爆炸", "自带归一化"], answer: 0, d: 4 },
+    { q: "【面试】causal mask 在解码器中的作用是？", options: ["防止位置 i 看到未来 token，保证自回归一致性", "屏蔽噪声数据", "隐藏系统提示", "过滤敏感词"], answer: 0, d: 4 },
+    { q: "【面试】GPT 系列采用的是哪类架构？", options: ["decoder-only 自回归", "encoder-decoder", "encoder-only", "CNN-RNN 混合"], answer: 0, d: 4 },
+    { q: "【面试】数据并行中 AllReduce 操作用于？", options: ["同步各卡梯度，保证参数一致更新", "广播数据集", "压缩日志", "选举主节点"], answer: 0, d: 4 },
+    { q: "【面试】NCCL 是？", options: ["NVIDIA 的 GPU 集合通信库（all-reduce 等原语）", "一种语言模型", "云服务商", "评测基准"], answer: 0, d: 4 },
+    { q: "【面试】梯度累积的用途是？", options: ["小显存下多次前反向累积梯度，等效大 batch", "让梯度变正", "替代优化器", "减少数据量"], answer: 0, d: 4 },
+    { q: "【面试】混合精度训练中动态 loss scaling 用于？", options: ["防止半精度下小梯度下溢为 0", "放大 loss 蒙骗评估", "让 loss 变负", "替代学习率"], answer: 0, d: 4 },
+    { q: "【面试】BF16 相比 FP16 更适合训练的原因是？", options: ["指数位更多、数值范围更大，更不易溢出", "精度位数更多", "一定更快", "不需要硬件支持"], answer: 0, d: 4 },
+    { q: "【面试】QLoRA 的做法是？", options: ["4bit 量化冻结底座 + 其上做 LoRA 微调", "QLoRA 是数据库", "全参数 FP32 微调", "只微调 tokenizer"], answer: 0, d: 4 },
+    { q: "【面试】ZeRO-1/2/3 的递进分片对象是？", options: ["优化器状态 → 梯度 → 参数，逐级切分降显存", "数据 → 标签 → 日志", "loss → lr → seed", "权重 → 激活 → 输出"], answer: 0, d: 4 },
+    { q: "【面试】Megatron 式张量并行对 MLP 的典型切分是？", options: ["第一个矩阵按列切、第二个按行切，通信量最小", "全部按行切", "不切分", "只切 bias"], answer: 0, d: 4 },
+    { q: "【面试】序列并行（sequence parallelism）切分的维度是？", options: ["把激活的序列维切分到多卡以省显存", "把词表切分", "把 batch 切分", "把文件切分"], answer: 0, d: 4 },
+    { q: "【面试】FP8 训练的主要挑战是？", options: ["动态范围极小，需要精细的 scaling 策略", "没有硬件支持", "精度太高", "不支持矩阵乘法"], answer: 0, d: 4 },
+    { q: "【面试】Switch Transformer 相比 GShard 的路由变化是？", options: ["每个 token 只路由到 top-1 专家", "路由到全部专家", "随机路由", "不用路由"], answer: 0, d: 4 },
+    { q: "【面试】Mamba 推理时每步的计算特征是？", options: ["常数时间状态更新，不随序列长度增长", "每步重算全部历史", "必须用 GPU 集群", "每步重新训练"], answer: 0, d: 4 },
+    { q: "【面试】“attention sink”现象指？", options: ["大量注意力集中在开头少数 token（如首 token）上", "注意力全部消失", "注意力均匀分布", "注意力指向未来"], answer: 0, d: 4 },
+    { q: "【面试】StreamingLLM 利用 attention sink 做到了？", options: ["保留少数 sink token + 滑窗，实现无限流式生成", "把模型压缩一半", "训练免费加速", "替代微调"], answer: 0, d: 4 },
+    { q: "【面试】Mistral 采用的注意力策略是？", options: ["滑动窗口注意力（SWA）限制窗口内计算", "全量注意力无限制", "无注意力", "只看最后一个 token"], answer: 0, d: 4 },
+    { q: "【面试】Position Interpolation（PI）扩展上下文的方式是？", options: ["把位置索引线性缩放到训练范围内再插值", "删除位置编码", "随机分配位置", "反转序列"], answer: 0, d: 4 },
+    { q: "【面试】ALiBi 位置编码的思路是？", options: ["按距离对注意力分数加线性惩罚偏置，免训练外推", "旋转位置向量", "学习绝对位置表", "不处理位置"], answer: 0, d: 4 },
+    { q: "【面试】pass@k 指标的含义是？", options: ["k 次采样中至少一次通过测试的期望比例", "通过率为 k%", "第 k 次必通过", "前 k 名的均分"], answer: 0, d: 4 },
+    { q: "【面试】Self-Consistency 解码策略是？", options: ["多次采样推理路径，取多数一致的最终答案", "只采一次", "取最长答案", "随机选一个"], answer: 0, d: 4 },
+    { q: "【面试】Best-of-N + 奖励模型重排的策略属于？", options: ["用 RM 给 N 个候选打分选最优（拒绝采样思想）", "随机抽一个", "全部拼接输出", "取最短回答"], answer: 0, d: 4 },
+    { q: "【面试】过程奖励模型（PRM）与结果奖励模型（ORM）的区别是？", options: ["PRM 对推理的每一步打分，ORM 只看最终答案对错", "PRM 只看答案", "没有区别", "ORM 更细粒度"], answer: 0, d: 4 },
+    { q: "【面试】结构化 JSON 输出的实现方式是？", options: ["受限解码（constrained decoding）按语法约束生成", "让模型自觉遵守即可", "生成后再翻译", "关闭注意力"], answer: 0, d: 4 },
+    { q: "【面试】min_p 采样的规则是？", options: ["丢弃概率低于“最高概率×系数”的候选再采样", "只保留概率最小的", "固定保留 k 个", "均匀采样"], answer: 0, d: 4 },
+    { q: "【面试】KV Cache 量化的主要收益是？", options: ["降低长上下文推理的显存占用", "提高输出质量上限", "替代投机解码", "减少训练时间"], answer: 0, d: 4 },
+    { q: "【面试】推理时 Prefill 与 Decode 分离（PD 分离）的收益是？", options: ["两类负载特征不同，分开调度各自优化利用率", "完全省掉 Decode", "合并成一个阶段", "减少参数量"], answer: 0, d: 4 },
+    { q: "【面试】CUDA Graph 用于推理加速的原理是？", options: ["捕获整段 kernel 序列一次启动，减少启动开销", "把模型画成图", "压缩权重", "替代显存"], answer: 0, d: 4 },
+    { q: "【面试】批处理推理吞吐随 batch 增大的根本原因是？", options: ["GPU 并行计算单元利用率提高，摊薄了权重读取", "参数变少", "KV Cache 消失", "模型自动变小"], answer: 0, d: 4 },
+    { q: "【面试】d_model 与注意力头数的关系通常是？", options: ["d_model = 头数 × 每头维度", "d_model = 头数²", "无关", "d_model = 头数 + 维度"], answer: 0, d: 4 },
+    { q: "【面试】字节级 BPE 对多语言的公平性更好，因为？", options: ["任何 UTF-8 文本都能表示，不存在 OOV", "只会英文", "词表最小", "不需要训练"], answer: 0, d: 4 },
+    { q: "【生态】Ilya Sutskever 离开 OpenAI 后创办了？", options: ["Safe Superintelligence Inc.", "DeepMind", "Mistral", "Hugging Face"], answer: 0, d: 4 },
+    { q: "【生态】Character.AI 由 Transformer 论文哪位作者创办？", options: ["Noam Shazeer", "Ashish Vaswani", "Jakob Uszkoreit", "Llion Jones"], answer: 0, d: 4 },
+    { q: "【生态】Perplexity 的产品形态是？", options: ["带引用来源的 AI 搜索引擎", "视频剪辑", "云服务器", "代码仓库"], answer: 0, d: 4 },
+    { q: "【生态】ElevenLabs 主打的方向是？", options: ["AI 语音合成与克隆", "图像超分", "机器翻译", "数据标注"], answer: 0, d: 4 },
+    { q: "【生态】Suno 主打的方向是？", options: ["AI 音乐生成", "AI 编程", "AI 绘画", "AI 搜索"], answer: 0, d: 4 },
+    { q: "【生态】Groq 硬件的主打卖点是？", options: ["LPU 架构的超低延迟 LLM 推理", "训练显卡", "存储阵列", "手机芯片"], answer: 0, d: 4 },
+    { q: "【生态】NotebookLM 是哪家公司的文档问答工具？", options: ["Google", "微软", "苹果", "亚马逊"], answer: 0, d: 4 },
+    { q: "【面试】Agent 系统中“长期记忆”的常见实现是？", options: ["把要点写入向量库，按相关性检索回上下文", "扩大显卡显存", "加密会话", "增加参数量"], answer: 0, d: 4 },
+    { q: "【面试】“可验证奖励”RL 最适合的领域是？", options: ["数学与代码等可自动判对错的领域", "诗歌赏析", "香水品鉴", "一切场景无差别适用"], answer: 0, d: 4 },
+    { q: "【面试】从似然训练角度解释幻觉的一种观点是？", options: ["模型被训练为生成流畅续写，缺少事实锚定机制", "训练数据太少必然幻觉", "幻觉只来自 GPU", "幻觉是评测误差"], answer: 0, d: 4 },
+
+    // ---------- ★★★★ 其他厂面试档 ----------
+    { q: "【OpenAI】InstructGPT 论文的历史意义是？", options: ["首次系统性用 RLHF 对齐 GPT-3，奠定对话模型范式", "发明了 Transformer", "首次提出注意力", "首次训练万亿参数模型"], answer: 0, d: 4 },
+    { q: "【OpenAI】Whisper 是哪类模型？", options: ["多语言语音识别", "图像分割", "推荐系统", "数据库"], answer: 0, d: 4 },
+    { q: "【OpenAI】CLIP 的训练方式是？", options: ["图文对比学习，把配对图文在共享空间拉近", "只看图像自监督", "强化学习玩游戏的", "人工规则分类"], answer: 0, d: 4 },
+    { q: "【OpenAI】tiktoken 是官方的？", options: ["高性能 BPE 分词库", "显卡驱动", "评测榜单", "聊天客户端"], answer: 0, d: 4 },
+    { q: "【OpenAI】DALL-E 系列由哪家公司推出？", options: ["OpenAI", "Meta", "百度", "Stability AI"], answer: 0, d: 4 },
+    { q: "【OpenAI】GPT-4o 中 “o” 的含义是？", options: ["omni，全模态统一处理文本/音频/图像", "zero 成本", "omega 最终版", "open 开源"], answer: 0, d: 4 },
+    { q: "【OpenAI】Codex 与 GitHub Copilot 的关系是？", options: ["Codex 是 Copilot 背后的早期代码模型", "两者毫无关系", "Codex 是编译器", "Copilot 是 Codex 的竞争对手"], answer: 0, d: 4 },
+    { q: "【OpenAI】Sora 的核心技术底座是？", options: ["DiT（Diffusion Transformer）扩散变换器", "纯 RNN", "GNN 图网络", "SVM"], answer: 0, d: 4 },
+    { q: "【OpenAI】模型系统卡（System Card）的作用是？", options: ["披露模型能力、局限与安全风险评估", "显卡说明书", "API 价目表", "用户手册"], answer: 0, d: 4 },
+    { q: "【Anthropic】Constitutional AI 的两个阶段是？", options: ["AI 批评修订生成监督数据 + RLAIF 偏好训练", "预训练 + 量化", "蒸馏 + 剪枝", "爬取 + 清洗"], answer: 0, d: 4 },
+    { q: "【Anthropic】Anthropic 的研究特色方向是？", options: ["机制可解释性（如稀疏自编码器提取特征）", "显卡散热", "网页设计", "区块链"], answer: 0, d: 4 },
+    { q: "【Anthropic】Claude 早期领先的标志性能力是？", options: ["200K token 超长上下文", "生成 3D 模型", "实时视频通话", "免费无限制"], answer: 0, d: 4 },
+    { q: "【Anthropic】MCP（Model Context Protocol）要解决的问题是？", options: ["统一模型与外部工具、数据源的连接标准", "模型压缩", "分词效率", "显卡互联"], answer: 0, d: 4 },
+    { q: "【Anthropic】Computer Use 能力指？", options: ["让模型像人一样操作屏幕 GUI 完成任务", "用电脑训练模型", "远程开机", "编译 CUDA 代码"], answer: 0, d: 4 },
+    { q: "【Anthropic】Artifacts 功能的作用是？", options: ["对话旁实时渲染运行代码、文档等产出物", "备份聊天记录", "加密密钥管理", "显卡超频"], answer: 0, d: 4 },
+    { q: "【Anthropic】Anthropic 由哪两位创立？", options: ["Dario 与 Daniela Amodei 姐弟", "Sam Altman 与 Elon Musk", "李彦宏与马东敏", "Larry Page 与 Sergey Brin"], answer: 0, d: 4 },
+    { q: "【Google】T5 的核心范式是？", options: ["把所有 NLP 任务统一为 text-to-text", "把所有任务统一为图像生成", "只用零样本", "只做翻译"], answer: 0, d: 4 },
+    { q: "【Google】Gemma 系列的定位是？", options: ["Google 的开源轻量模型系列（与 Gemini 技术同源）", "闭源旗舰", "语音专用模型", "游戏引擎"], answer: 0, d: 4 },
+    { q: "【Google】AlphaFold 的科学贡献是？", options: ["高精度预测蛋白质三维结构", "证明哥德巴赫猜想", "发现新元素", "合成常温超导"], answer: 0, d: 4 },
+    { q: "【Google】PaLM 大模型的训练依托的系统是？", options: ["Pathways 异构计算愿景", "Hadoop", "Spark", "Kubernetes 原生训练"], answer: 0, d: 4 },
+    { q: "【Google】Gemini 主打的核心能力是？", options: ["原生多模态：文本/图像/音频/视频统一训练", "只擅长文本", "只做搜索", "只支持英语"], answer: 0, d: 4 },
+    { q: "【Google】BERT 的两个预训练任务是？", options: ["掩码语言模型（MLM）+ 下一句预测（NSP）", "自回归 + 强化学习", "图像分类 + 检测", "聚类 + 降维"], answer: 0, d: 4 },
+    { q: "【Google】Word2Vec 的两种训练结构是？", options: ["CBOW 与 Skip-gram", "Encoder 与 Decoder", "CNN 与 RNN", "GPT 与 BERT"], answer: 0, d: 4 },
+    { q: "【Meta】Llama 2 开源许可的特点是？", options: ["允许商用，但附带条款（如超大月活需另行授权）", "完全无任何限制", "禁止一切使用", "仅限 Meta 内部"], answer: 0, d: 4 },
+    { q: "【Meta】SAM（Segment Anything）的用途是？", options: ["通用图像分割，可分割任意物体", "语音克隆", "文本摘要", "SQL 优化"], answer: 0, d: 4 },
+    { q: "【Meta】PyTorch 受研究界青睐的主要原因是？", options: ["动态图 + Pythonic 设计，调试灵活", "不能用 GPU", "闭源商业软件", "只支持 CPU"], answer: 0, d: 4 },
+    { q: "【Meta】DINOv2 的研究方向是？", options: ["自监督视觉特征学习，无需标注", "语音合成", "数据库索引", "代码补全"], answer: 0, d: 4 },
+    { q: "【Meta】Llama 3 在 tokenizer 上的重要变化是？", options: ["词表扩展到约 128K token，多语言切分更高效", "删除 tokenizer", "改回字符级", "词表缩到 1K"], answer: 0, d: 4 },
+    { q: "【Microsoft】Phi 系列模型的技术路线是？", options: ["小参数量 + 高质量“教科书级”数据换强能力", "无限堆参数", "纯强化学习", "不用预训练"], answer: 0, d: 4 },
+    { q: "【Microsoft】Azure OpenAI Service 对企业的价值是？", options: ["在合规的企业云环境中调用 OpenAI 模型", "免费赠送 GPU", "开源 OpenAI 权重", "替代 Windows"], answer: 0, d: 4 },
+    { q: "【Microsoft】Microsoft 与 OpenAI 的核心合作形态是？", options: ["巨额投资 + Azure 独家云合作", "合并为一家公司", "仅互相竞争", "专利诉讼和解"], answer: 0, d: 4 },
+    { q: "【NVIDIA】TensorRT-LLM 的用途是？", options: ["NVIDIA 官方 LLM 推理优化库", "训练数据爬取", "标注平台", "词表工具"], answer: 0, d: 4 },
+    { q: "【NVIDIA】Blackwell 架构对应的数据中心 GPU 是？", options: ["B200 / GB200 系列", "GTX 1080", "RTX 3050", "GeForce 256"], answer: 0, d: 4 },
+    { q: "【NVIDIA】Triton Inference Server 的定位是？", options: ["多后端统一的模型部署服务软件", "游戏引擎", "浏览器", "操作系统"], answer: 0, d: 4 },
+    { q: "【Hugging Face】Transformers 库的核心抽象是？", options: ["统一的 model / tokenizer / pipeline 接口", "显卡驱动", "区块链账本", "操作系统内核"], answer: 0, d: 4 },
+    { q: "【Hugging Face】PEFT 库的用途是？", options: ["集合 LoRA 等参数高效微调方法", "数据可视化", "爬虫框架", "硬件监控"], answer: 0, d: 4 },
+    { q: "【Hugging Face】Model Hub 的意义是？", options: ["托管共享模型权重与数据集，推动开源生态", "游戏下载平台", "短视频社区", " 云硬盘"], answer: 0, d: 4 },
+    { q: "【Hugging Face】TRL 库主要面向？", options: ["Transformer 强化学习（RLHF/DPO 训练工具链）", "翻译本地化", "3D 渲染", "音频剪辑"], answer: 0, d: 4 },
+    { q: "【国内厂】魔搭 ModelScope 是？", options: ["阿里发起的开源模型社区平台", "游戏发行平台", "短视频 App", "输入法"], answer: 0, d: 4 },
+    { q: "【国内厂】QwQ 是 Qwen 团队的哪类模型？", options: ["推理模型（思考后再作答）", "图像生成", "语音识别", "视频剪辑"], answer: 0, d: 4 },
+    { q: "【国内厂】飞桨（PaddlePaddle）是？", options: ["百度开源的深度学习框架", "腾讯云产品", "无人机型号", "芯片架构"], answer: 0, d: 4 },
+    { q: "【国内厂】萝卜快跑是哪家的业务？", options: ["百度 Apollo 自动驾驶出行服务", "美团买菜", "滴滴货运", "饿了么"], answer: 0, d: 4 },
+    { q: "【国内厂】腾讯元宝是？", options: ["腾讯的 AI 助手应用（接入混元）", "支付产品", "游戏内道具", "理财产品"], answer: 0, d: 4 },
+    { q: "【国内厂】零一万物（01.AI）由谁创办？", options: ["李开复", "王小川", "周伯文", "陈天奇"], answer: 0, d: 4 },
+    { q: "【国内厂】月之暗面（Moonshot AI）的创始人是？", options: ["杨植麟", "张一鸣", "王兴", "宿华"], answer: 0, d: 4 },
+    { q: "【国内厂】百川智能的创始人是？", options: ["王小川（前搜狗 CEO）", "雷军", "罗永浩", "傅盛"], answer: 0, d: 4 },
+    { q: "【国内厂】MiniMax 的代表产品线是？", options: ["ABAB 系列模型与海螺 AI", "OceanBase 数据库", "红米手机", "钉钉"], answer: 0, d: 4 },
+    { q: "【国内厂】阶跃星辰（StepFun）的总部城市与方向是？", options: ["上海，多模态与推理模型", "香港，游戏", "成都，餐饮", "深圳，无人机"], answer: 0, d: 4 },
+    { q: "【国内厂】火山引擎是？", options: ["字节跳动旗下的云服务平台", "阿里云竞品不是字节的", "一家电厂", "游戏引擎"], answer: 0, d: 4 },
+    { q: "【生态】Mixtral 8x7B 的架构特点是？", options: ["Mistral 的开源 MoE 模型（8 专家取 2）", "稠密 70B 模型", "纯编码器", "RNN 模型"], answer: 0, d: 4 },
+  ];
+
+  // ---------- 音效 ----------
+  let audioCtx = null;
+  let muted = localStorage.getItem(MUTE_KEY) === "1";
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  function beep(freq, duration, type, volume, when) {
+    if (muted || !audioCtx) return;
+    const t = audioCtx.currentTime + (when || 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || "square";
+    osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(volume || 0.06, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
+  const sfx = {
+    hit() { beep(180, 0.08, "square", 0.05); beep(120, 0.1, "triangle", 0.05, 0.02); },
+    crit() { beep(520, 0.08, "square", 0.07); beep(760, 0.12, "square", 0.06, 0.05); },
+    right() { beep(660, 0.08, "sine", 0.05); beep(880, 0.1, "sine", 0.05, 0.07); },
+    wrong() { beep(200, 0.15, "sawtooth", 0.05); beep(140, 0.2, "sawtooth", 0.05, 0.12); },
+    hurt() { beep(140, 0.15, "sawtooth", 0.05); },
+    heal() { beep(600, 0.08, "sine", 0.05); beep(880, 0.1, "sine", 0.05, 0.06); },
+    win() { beep(523, 0.1, "square", 0.05); beep(659, 0.1, "square", 0.05, 0.09); beep(784, 0.16, "square", 0.05, 0.18); },
+    lose() { beep(330, 0.15, "sawtooth", 0.06); beep(220, 0.2, "sawtooth", 0.06, 0.14); beep(140, 0.3, "sawtooth", 0.06, 0.3); },
+    pick() { beep(700, 0.07, "sine", 0.06); beep(1000, 0.08, "sine", 0.05, 0.06); },
+    tick() { beep(900, 0.03, "square", 0.03); }
+  };
+
+  el("muteBtn").textContent = muted ? "🔇" : "🔊";
+  el("muteBtn").addEventListener("click", () => {
+    muted = !muted;
+    localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+    el("muteBtn").textContent = muted ? "🔇" : "🔊";
+  });
+
+  // ---------- 历史最佳 ----------
+  function getBest() {
+    return parseInt(localStorage.getItem(BEST_KEY) || "0", 10);
+  }
+
+  function renderBest() {
+    const best = getBest();
+    el("bestFloor").textContent = best > 0 ? best : "-";
+  }
+
+  function updateBest() {
+    if (state.floor > getBest()) {
+      localStorage.setItem(BEST_KEY, state.floor);
+      return true;
+    }
+    return false;
+  }
+
+  renderBest();
+
+  // ---------- 工具 ----------
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // 每个难度一个队列，抽空才重洗（保证一轮内不重复）
+  const levelQueues = { 1: [], 2: [], 3: [], 4: [] };
+
+  function refillLevel(d) {
+    levelQueues[d] = shuffle(
+      questionBank.map((q, i) => i).filter(i => questionBank[i].d === d)
+    );
+  }
+
+  function pickLevel() {
+    const f = state.floor;
+    const r = Math.random();
+    if (f <= 4) return r < 0.85 ? 1 : 2;
+    if (f <= 9) return r < 0.4 ? 1 : 2;
+    if (f <= 14) return r < 0.2 ? 1 : (r < 0.85 ? 2 : 3);
+    if (f <= 19) return r < 0.35 ? 2 : 3;
+    return r < 0.2 ? 2 : (r < 0.65 ? 3 : 4);
+  }
+
+  function nextQuestion() {
+    let d = pickLevel();
+
+    if (levelQueues[d].length === 0) refillLevel(d);
+    if (levelQueues[d].length === 0) {
+      // 该难度没题，回退到有题的难度
+      d = [1, 2, 3, 4].find(x => {
+        if (levelQueues[x].length === 0) refillLevel(x);
+        return levelQueues[x].length > 0;
+      });
+    }
+
+    const idx = levelQueues[d].pop();
+    const raw = questionBank[idx];
+
+    // 随机化选项顺序
+    const order = shuffle(raw.options.map((_, i) => i));
+    return {
+      text: raw.q,
+      options: order.map(i => raw.options[i]),
+      correct: order.indexOf(raw.answer),
+      d: raw.d
+    };
+  }
+
+  function makeEnemy(floor) {
+    const isBoss = floor % 10 === 0;
+    const isElite = !isBoss && floor % 5 === 0;
+
+    let baseName, face;
+    if (isBoss) {
+      [baseName, face] = bossNames[Math.floor(floor / 10 - 1) % bossNames.length];
+    } else {
+      [baseName, face] = enemyNames[(floor - 1) % enemyNames.length];
+    }
+
+    let hp = Math.floor(25 + floor * 12 + floor * floor * 0.6);
+    let atk = Math.floor(4 + floor * 2.1);
+
+    if (isElite) { hp = Math.floor(hp * 1.35); atk = Math.floor(atk * 1.15); }
+    if (isBoss) { hp = Math.floor(hp * 1.8); atk = Math.floor(atk * 1.4); }
+
+    return {
+      name: baseName + (isBoss ? " 👑" : isElite ? " · 精英" : ""),
+      face,
+      hp,
+      maxHp: hp,
+      atk,
+      isBoss
+    };
+  }
+
+  function effectiveAtk() {
+    return state.atk + Math.floor(state.watermelon / 10) * state.watermelonPower;
+  }
+
+  function spawnEnemy() {
+    state.enemy = makeEnemy(state.floor);
+    state.shield = state.shieldPerFloor;
+    state.busy = false;
+    updateUI();
+  }
+
+  // ---------- 浮动数字 / 震动 ----------
+  function floatNum(panelId, text, cls) {
+    const panel = el(panelId);
+    const span = document.createElement("span");
+    span.className = "float-num" + (cls ? " " + cls : "");
+    span.textContent = text;
+    panel.appendChild(span);
+    setTimeout(() => span.remove(), 950);
+  }
+
+  function shake(panelId, crit) {
+    const panel = el(panelId);
+    panel.classList.remove("panel-hit", "panel-hit-crit");
+    void panel.offsetWidth;
+    panel.classList.add(crit ? "panel-hit-crit" : "panel-hit");
+  }
+
+  function bumpStat(id) {
+    const node = el(id);
+    node.classList.remove("bump");
+    void node.offsetWidth;
+    node.classList.add("bump");
+  }
+
+  function enemyHurtFx() {
+    const panel = el("enemyPanel");
+    panel.classList.remove("hurt");
+    void panel.offsetWidth;
+    panel.classList.add("hurt");
+  }
+
+  // ---------- UI ----------
+  function updateUI() {
+    el("floorNum").textContent = state.floor;
+    el("watermelon").textContent = state.watermelon;
+    el("atk").textContent = effectiveAtk();
+    el("crit").textContent = Math.round(state.crit * 100) + "%";
+    el("acc").textContent = state.answered > 0
+      ? Math.round(state.correct / state.answered * 100) + "%"
+      : "-";
+    el("lifesteal").textContent = state.lifesteal;
+    el("shield").textContent = state.shield;
+    el("thorns").textContent = state.thorns;
+    el("timeLimitText").textContent = state.timeLimit + "s";
+    el("streak").textContent = state.streak;
+
+    const playerPct = Math.max(0, state.hp / state.maxHp * 100);
+    el("playerHpBar").style.width = playerPct + "%";
+    el("playerHpBar").classList.toggle("low", playerPct < 30);
+    el("playerHpText").textContent =
+      Math.max(0, Math.floor(state.hp)) + "/" + state.maxHp;
+
+    const enemy = state.enemy;
+    if (enemy) {
+      el("enemyName").textContent = enemy.name;
+      el("enemyFace").textContent = enemy.face;
+      el("enemyAtk").textContent = enemy.atk;
+      el("enemyHpBar").style.width =
+        Math.max(0, enemy.hp / enemy.maxHp * 100) + "%";
+      el("enemyHpText").textContent =
+        Math.max(0, Math.floor(enemy.hp)) + "/" + enemy.maxHp;
+    }
+  }
+
+  function log(message, type) {
+    const line = document.createElement("div");
+    line.className = "log-line" + (type ? " " + type : "");
+    line.textContent = message;
+    el("log").prepend(line);
+
+    while (el("log").children.length > 8) {
+      el("log").lastChild.remove();
+    }
+  }
+
+  // ---------- 出题 ----------
+  let timer = null;
+  let lastTickWhole = null;
+
+  function showQuestion() {
+    if (!state.alive || state.enemy.hp <= 0) return;
+
+    state.currentQ = nextQuestion();
+    state.timeLeft = state.timeLimit;
+    state.busy = false;
+    updateUI();
+
+    const card = el("quizCard");
+    card.classList.remove("right", "wrong");
+
+    const stars = "★".repeat(state.currentQ.d) + "☆".repeat(4 - state.currentQ.d);
+    const cls = state.currentQ.d >= 4 ? "hard" : state.currentQ.d === 3 ? "mid" : "";
+    el("questionText").innerHTML =
+      `<span class="qnum ${cls}">Q${state.answered + 1} · ${stars}</span>${state.currentQ.text}`;
+
+    const verdict = el("verdict");
+    verdict.textContent = "";
+    verdict.className = "verdict";
+
+    const container = el("options");
+    container.innerHTML = "";
+    const tags = ["A", "B", "C", "D"];
+
+    state.currentQ.options.forEach((optText, i) => {
+      const btn = document.createElement("button");
+      btn.className = "opt";
+      btn.innerHTML = `<span class="tag">${tags[i]}</span>${optText}`;
+      btn.onclick = () => handleAnswer(i);
+      container.appendChild(btn);
+    });
+
+    lastTickWhole = Math.ceil(state.timeLeft);
+    timer = setInterval(tick, 100);
+    updateTimerBar();
+  }
+
+  function updateTimerBar() {
+    const fill = el("timeFill");
+    const pct = Math.max(0, state.timeLeft / state.timeLimit * 100);
+    fill.style.width = pct + "%";
+    fill.classList.toggle("urgent", pct < 30);
+
+    const whole = Math.ceil(state.timeLeft);
+    if (whole <= 5 && whole !== lastTickWhole && whole > 0) {
+      lastTickWhole = whole;
+      sfx.tick();
+    }
+  }
+
+  function tick() {
+    state.timeLeft -= 0.1;
+    updateTimerBar();
+
+    if (state.timeLeft <= 0) {
+      state.timeLeft = 0;
+      handleAnswer(-1);
+    }
+  }
+
+  function stopTimer() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  // ---------- 答题判定 ----------
+  function handleAnswer(pick) {
+    if (!state.alive || state.busy || !state.currentQ) return;
+    if (pick >= 0 && !timer) return;
+
+    stopTimer();
+    state.busy = true;
+    state.answered += 1;
+
+    const isRight = pick === state.currentQ.correct;
+    const card = el("quizCard");
+    const buttons = [...el("options").children];
+
+    buttons.forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === state.currentQ.correct) {
+        btn.classList.add("correct");
+      } else if (i === pick) {
+        btn.classList.add("wrong-pick");
+      } else {
+        btn.classList.add("faded");
+      }
+    });
+
+    const verdict = el("verdict");
+
+    if (isRight) {
+      state.correct += 1;
+      state.streak += 1;
+      card.classList.add("right");
+      sfx.right();
+
+      const fast = state.timeLeft / state.timeLimit >= 0.6;
+      verdict.textContent = fast
+        ? `✅ 正确！快答加成（剩 ${Math.ceil(state.timeLeft)}s）`
+        : "✅ 正确！";
+      verdict.className = "verdict ok";
+
+      playerStrike(fast);
+      updateUI();
+
+      if (state.enemy.hp <= 0) {
+        state.enemy.hp = 0;
+        updateUI();
+        setTimeout(winFloor, 600);
+      } else {
+        setTimeout(showQuestion, 1200);
+      }
+    } else {
+      state.streak = 0;
+      card.classList.add("wrong");
+      sfx.wrong();
+
+      const rightText = state.currentQ.options[state.currentQ.correct];
+      verdict.textContent = (pick < 0
+        ? "⏰ 超时！正确答案是："
+        : "❌ 答错了！正确答案是：") + rightText;
+      verdict.className = "verdict no";
+
+      log(`答错一题，${state.enemy.name} 发起攻击`, "info");
+      updateUI();
+
+      setTimeout(() => {
+        enemyStrike();
+        updateUI();
+
+        if (state.hp <= 0) {
+          state.hp = 0;
+          state.alive = false;
+          updateUI();
+          setTimeout(gameOver, 500);
+        } else {
+          setTimeout(showQuestion, 1100);
+        }
+      }, 700);
+    }
+  }
+
+  function playerStrike(fast) {
+    let damage = effectiveAtk();
+    const isCrit = Math.random() < state.crit;
+
+    if (isCrit) damage = Math.floor(damage * 2);
+    if (fast) damage = Math.floor(damage * 1.5);
+
+    let comboDamage = 0;
+    if (state.streak >= 3 && Math.random() < state.comboRate) {
+      comboDamage = Math.floor(damage * 0.5);
+    }
+
+    const totalDamage = damage + comboDamage;
+    state.enemy.hp -= totalDamage;
+
+    state.watermelon += 1;
+    bumpStat("watermelon");
+
+    if (isCrit) {
+      log(`💥 暴击！造成 ${totalDamage} 伤害（+1 🍉）`, "crit");
+      floatNum("enemyPanel", "暴击 -" + totalDamage, "crit");
+      shake("enemyPanel", true);
+      sfx.crit();
+    } else {
+      log(`答对挥刀，造成 ${totalDamage} 伤害${fast ? "（快答加成）" : ""}${comboDamage ? "，心流连击！" : ""}（+1 🍉）`, "dmg");
+      floatNum("enemyPanel", "-" + totalDamage);
+      shake("enemyPanel", false);
+      sfx.hit();
+    }
+
+    enemyHurtFx();
+
+    if (state.lifesteal > 0 && state.hp < state.maxHp) {
+      const heal = Math.min(state.lifesteal, state.maxHp - state.hp);
+      state.hp += heal;
+      log(`智慧回甘，回复 ${heal} HP`, "heal");
+      floatNum("playerPanel", "+" + heal, "heal");
+      sfx.heal();
+    }
+  }
+
+  function enemyStrike() {
+    if (!state.alive || !state.enemy || state.enemy.hp <= 0) return;
+
+    let damage = state.enemy.atk;
+
+    if (state.shield > 0) {
+      const absorbed = Math.min(state.shield, damage);
+      state.shield -= absorbed;
+      damage -= absorbed;
+
+      if (absorbed > 0) {
+        log(`瓜皮护盾吸收 ${absorbed} 伤害`);
+        floatNum("playerPanel", "盾 -" + absorbed);
+      }
+    }
+
+    if (damage > 0) {
+      state.hp -= damage;
+      log(`${state.enemy.name} 攻击，造成 ${damage} 伤害`, "dmg");
+      floatNum("playerPanel", "-" + damage);
+      shake("playerPanel", false);
+      sfx.hurt();
+    }
+
+    if (state.thorns > 0 && state.enemy.hp > 0) {
+      state.enemy.hp -= state.thorns;
+      log(`反思之刺反弹 ${state.thorns} 伤害`, "dmg");
+      floatNum("enemyPanel", "-" + state.thorns);
+    }
+  }
+
+  function winFloor() {
+    if (!state.alive) return;
+
+    state.busy = true;
+    stopTimer();
+    sfx.win();
+
+    let gain = 5 + state.floor + state.watermelonBonus;
+    if (state.enemy && state.enemy.isBoss) {
+      gain *= 3;
+      log(`👑 击败 Boss！获得 ${gain} 个西瓜`, "win");
+    } else {
+      log(`🎉 通关第 ${state.floor} 层，获得 ${gain} 个西瓜`, "win");
+    }
+    state.watermelon += gain;
+    bumpStat("watermelon");
+    updateUI();
+
+    setTimeout(showRewards, 420);
+  }
+
+  // ---------- 奖励 ----------
+  const rewardPool = [
+    {
+      icon: "💪", name: "逻辑强化", desc: "攻击力 +3", rarity: "common",
+      apply: s => { s.atk += 3; }
+    },
+    {
+      icon: "❤️", name: "知识韧性", desc: "最大生命 +20，并回复 20 HP", rarity: "common",
+      apply: s => {
+        s.maxHp += 20;
+        s.hp = Math.min(s.maxHp, s.hp + 20);
+      }
+    },
+    {
+      icon: "🎯", name: "灵光一闪", desc: "暴击率 +8%", rarity: "rare",
+      apply: s => { s.crit = Math.min(0.75, s.crit + 0.08); }
+    },
+    {
+      icon: "🧃", name: "智慧回甘", desc: "答对时回复 +2 HP", rarity: "rare",
+      apply: s => { s.lifesteal += 2; }
+    },
+    {
+      icon: "🛡️", name: "经验护盾", desc: "每层开始获得 +5 护盾", rarity: "common",
+      apply: s => { s.shieldPerFloor += 5; }
+    },
+    {
+      icon: "⚡", name: "心流状态", desc: "连对 3 题后，15% 概率追加 50% 伤害", rarity: "rare",
+      apply: s => { s.comboRate = Math.min(0.6, s.comboRate + 0.15); }
+    },
+    {
+      icon: "🍉", name: "学分丰收", desc: "每层通关额外 +3 西瓜", rarity: "common",
+      apply: s => { s.watermelonBonus += 3; }
+    },
+    {
+      icon: "🌱", name: "学以致用", desc: "每 10 个西瓜提供 +1 攻击，可叠加", rarity: "epic",
+      apply: s => { s.watermelonPower += 1; }
+    },
+    {
+      icon: "🍹", name: "课后补习", desc: "立即回复 30 HP", rarity: "common",
+      apply: s => {
+        s.hp = Math.min(s.maxHp, s.hp + 30);
+      }
+    },
+    {
+      icon: "🌵", name: "反思之刺", desc: "答错挨打时反弹 +2 伤害", rarity: "rare",
+      apply: s => { s.thorns += 2; }
+    },
+    {
+      icon: "⏳", name: "从容不迫", desc: "答题时间 +3 秒", rarity: "epic",
+      apply: s => { s.timeLimit += 3; }
+    }
+  ];
+
+  function showRewards() {
+    const pool = [...rewardPool];
+
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    const choices = pool.slice(0, 2);
+    const container = el("rewardCards");
+    container.innerHTML = "";
+
+    choices.forEach(reward => {
+      const card = document.createElement("button");
+      card.className = "reward-card";
+      card.innerHTML = `
+        <span class="rarity ${reward.rarity}">${reward.rarity === "epic" ? "EPIC" : reward.rarity === "rare" ? "RARE" : "COMMON"}</span>
+        <div class="reward-icon">${reward.icon}</div>
+        <div class="reward-name">${reward.name}</div>
+        <div class="reward-desc">${reward.desc}</div>
+      `;
+      card.onclick = () => chooseReward(reward);
+      container.appendChild(card);
+    });
+
+    el("rewardModal").classList.remove("hidden");
+  }
+
+  function chooseReward(reward) {
+    ensureAudio();
+    reward.apply(state);
+    sfx.pick();
+
+    el("rewardModal").classList.add("hidden");
+    log(`选择奖励：${reward.icon} ${reward.name}`, "win");
+
+    state.floor += 1;
+    state.busy = false;
+    spawnEnemy();
+
+    const newEnemy = state.enemy;
+    log(`进入第 ${state.floor} 层${newEnemy.isBoss ? " —— 👑 Boss 出现！" : newEnemy.name.includes("精英") ? " —— ⚠️ 精英敌人！" : ""}`, newEnemy.isBoss ? "crit" : "info");
+    setTimeout(showQuestion, 350);
+  }
+
+  // ---------- 结束 / 重开 ----------
+  function gameOver() {
+    stopTimer();
+    sfx.lose();
+
+    const isRecord = updateBest();
+    renderBest();
+
+    const acc = state.answered > 0
+      ? Math.round(state.correct / state.answered * 100)
+      : 0;
+
+    el("gameOverText").innerHTML =
+      `你到达了第 ${state.floor} 层，收集了 ${state.watermelon} 个西瓜。<br>` +
+      `共答题 ${state.answered} 道，答对 ${state.correct} 道，正确率 ${acc}%。`;
+
+    const recordLine = el("recordLine");
+    if (isRecord && state.floor > 1) {
+      recordLine.textContent = `🏆 新纪录！历史最佳：第 ${state.floor} 层`;
+      recordLine.classList.remove("hidden");
+    } else {
+      recordLine.classList.add("hidden");
+    }
+
+    el("gameOverModal").classList.remove("hidden");
+  }
+
+  function restart() {
+    stopTimer();
+
+    Object.assign(state, {
+      floor: 1,
+      watermelon: 0,
+      hp: 100,
+      maxHp: 100,
+      atk: 10,
+      shield: 0,
+      crit: 0.05,
+      lifesteal: 0,
+      comboRate: 0,
+      thorns: 0,
+      shieldPerFloor: 0,
+      watermelonBonus: 0,
+      watermelonPower: 0,
+      timeLimit: 15,
+      streak: 0,
+      answered: 0,
+      correct: 0,
+      enemy: null,
+      busy: false,
+      alive: true,
+      currentQ: null
+    });
+
+    levelQueues[1] = [];
+    levelQueues[2] = [];
+    levelQueues[3] = [];
+    levelQueues[4] = [];
+    el("log").innerHTML = "";
+    el("gameOverModal").classList.add("hidden");
+    el("rewardModal").classList.add("hidden");
+
+    log("新的冒险开始：答对挥刀，答错挨打！", "info");
+    spawnEnemy();
+    setTimeout(showQuestion, 350);
+  }
+
+  el("restartBtn").addEventListener("click", restart);
+
+  document.addEventListener("keydown", e => {
+    if (state.busy || !state.alive) return;
+    const map = { "1": 0, "2": 1, "3": 2, "4": 3, "a": 0, "b": 1, "c": 2, "d": 3 };
+    const idx = map[e.key.toLowerCase()];
+    if (idx !== undefined && timer) {
+      handleAnswer(idx);
+    }
+  });
+
+  log("新的冒险开始：答对挥刀，答错挨打！", "info");
+  spawnEnemy();
+  setTimeout(showQuestion, 400);
+</script>
+
+</body>
+</html>
