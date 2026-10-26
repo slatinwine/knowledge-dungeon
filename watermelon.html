@@ -11,6 +11,7 @@
     margin: 0;
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 16px;
@@ -1069,5 +1070,35 @@
   spawnEnemy();
 </script>
 
+<style>
+  .qr-footer{margin-top:16px}
+  .qr-footer-row{display:flex;gap:16px;flex-wrap:wrap}
+  .qr-footer-card.xhs strong{color:#FF2442}
+  .qr-footer-card{display:inline-flex;align-items:center;gap:14px;background:rgba(12,32,22,.92);border:1px solid rgba(132,204,22,.22);border-radius:18px;padding:12px 18px}
+  .qr-footer-card img{width:88px;height:88px;border-radius:10px;display:block}
+  .qr-footer-text{display:flex;flex-direction:column;gap:4px;text-align:left}
+  .qr-footer-text strong{font-size:13px;color:#eaffdf;font-weight:600}
+  .qr-footer-text span{font-size:11px;color:rgba(234,255,223,.6)}
+</style>
+<footer class="qr-footer">
+<div class="qr-footer-row">
+  <div class="qr-footer-card">
+    <img src="qrcode.jpg" alt="公众号二维码">
+    <div class="qr-footer-text">
+      <strong>扫码关注公众号</strong>
+      <span>知识地下城 · 更多 AI 游戏与更新</span>
+    </div>
+  </div>
+
+  <div class="qr-footer-card xhs">
+    <img src="xhs-qr.jpg" alt="小红书二维码">
+    <div class="qr-footer-text">
+      <strong>小红书 · 酒里加盐</strong>
+      <span>小红书号 6100441379 · 扫码找到我</span>
+      <span>酒馆会往酒里加盐，让顾客越喝越渴</span>
+    </div>
+  </div>
+</div>
+</footer>
 </body>
 </html>
