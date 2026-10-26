@@ -11,7 +11,6 @@
     margin: 0;
     min-height: 100vh;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 16px;
@@ -549,6 +548,75 @@
   #gameOverModal .modal-box { max-width: 360px; }
   #gameOverModal p { margin-bottom: 14px; }
 
+  /* ---------- 排行榜 ---------- */
+  .board {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .board-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #ffd966;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .board-head button {
+    border: none;
+    background: none;
+    color: #6f8a76;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .board-head button:hover { color: #a7c4ad; }
+  .board-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 3px 0;
+    color: #d7e8db;
+  }
+  .board-row .medal { width: 20px; text-align: center; }
+  .board-row .bname {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+  }
+  .board-row .binfo { font-size: 11px; color: #8fa896; }
+  .board-empty { font-size: 12px; color: #6f8a76; padding: 2px 0; }
+
+  .name-row { margin-bottom: 14px; }
+  .name-row label {
+    display: block;
+    font-size: 12px;
+    color: #ffd966;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .name-row input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 12px;
+    background: rgba(0,0,0,0.25);
+    color: #eaf5ec;
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+  }
+  .name-row input:focus { border-color: #a3e635; }
+
   @media (max-width: 380px) {
     .cards { grid-template-columns: 1fr; }
     .stats { grid-template-columns: repeat(2, 1fr); }
@@ -567,6 +635,11 @@
   </header>
 
   <div class="best">🏆 历史最佳：第 <b id="bestFloor">-</b> 层 · 答对挥刀，答错挨打 · 20 层后是面试档 · 选项顺序每局随机</div>
+
+  <div class="board" id="board">
+    <div class="board-head"><span>🏅 勇士排行榜 · TOP 3</span><button id="boardClear">清空</button></div>
+    <div id="boardList"></div>
+  </div>
 
   <div class="stats">
     <div class="stat"><span>🍉 西瓜</span><b id="watermelon">0</b></div>
@@ -631,6 +704,10 @@
   <div class="modal-box">
     <h2>💀 你倒在了地下城</h2>
     <p id="gameOverText"></p>
+    <div id="nameRow" class="name-row hidden">
+      <label id="nameLabel">🏅 你杀进了前三！留下大名：</label>
+      <input id="nameInput" maxlength="12" placeholder="无名勇士" autocomplete="off">
+    </div>
     <div id="recordLine" class="record-line hidden"></div>
     <button id="restartBtn" style="width:100%;padding:14px;border:none;border-radius:16px;background:linear-gradient(135deg,#a3e635,#22c55e);color:#06210f;font-family:inherit;font-size:18px;font-weight:900;cursor:pointer;">重新开始</button>
   </div>
@@ -1110,6 +1187,67 @@
   }
 
   renderBest();
+
+  // ---------- 排行榜（本地 Top 3） ----------
+  const LB_KEY = "knowledge-dungeon-leaderboard";
+  const NAME_KEY = "knowledge-dungeon-player-name";
+  const MEDALS = ["🥇", "🥈", "🥉"];
+  let pendingEntry = null; // 结算时暂存，重启时提交
+
+  function getBoard() {
+    try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); }
+    catch (e) { return []; }
+  }
+
+  function boardBetter(a, b) {
+    if (b.floor !== a.floor) return b.floor - a.floor;
+    if (b.correct !== a.correct) return b.correct - a.correct;
+    return a.ts - b.ts;
+  }
+
+  function renderBoard() {
+    const list = el("boardList");
+    const board = getBoard();
+    if (!board.length) {
+      list.innerHTML = '<div class="board-empty">虚位以待——打出一局好成绩，留下你的名字</div>';
+      return;
+    }
+    list.innerHTML = board.map((e, i) => {
+      const name = (e.name || "无名勇士").replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+      return `<div class="board-row"><span class="medal">${MEDALS[i]}</span><span class="bname">${name}</span><span class="binfo">第 ${e.floor} 层 · 对 ${e.correct} · ${e.acc}%</span></div>`;
+    }).join("");
+  }
+
+  function qualifiesForBoard(entry) {
+    const board = getBoard();
+    if (entry.floor <= 1) return false;
+    if (board.length < 3) return true;
+    const last = board[board.length - 1];
+    return boardBetter(entry, last) < 0;
+  }
+
+  function commitEntry() {
+    if (!pendingEntry) return;
+    const name = (el("nameInput").value || "").trim().slice(0, 12) || "无名勇士";
+    localStorage.setItem(NAME_KEY, name);
+    const board = getBoard();
+    board.push({ name, floor: pendingEntry.floor, correct: pendingEntry.correct, acc: pendingEntry.acc, ts: pendingEntry.ts });
+    board.sort(boardBetter);
+    localStorage.setItem(LB_KEY, JSON.stringify(board.slice(0, 3)));
+    pendingEntry = null;
+    renderBoard();
+  }
+
+  el("boardClear").addEventListener("click", () => {
+    localStorage.removeItem(LB_KEY);
+    renderBoard();
+  });
+
+  el("nameInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") el("restartBtn").click();
+  });
+
+  renderBoard();
 
   // ---------- 工具 ----------
   function shuffle(arr) {
@@ -1641,11 +1779,25 @@
       recordLine.classList.add("hidden");
     }
 
+    // 排行榜资格判定
+    pendingEntry = null;
+    el("nameRow").classList.add("hidden");
+    const entry = { floor: state.floor, correct: state.correct, acc, ts: Date.now() };
+    if (qualifiesForBoard(entry)) {
+      pendingEntry = entry;
+      const rank = getBoard().filter(e => boardBetter(e, entry) < 0).length + 1;
+      el("nameLabel").textContent = `🏅 你杀进了前三（当前第 ${rank} 位）！留下大名：`;
+      el("nameInput").value = localStorage.getItem(NAME_KEY) || "";
+      el("nameRow").classList.remove("hidden");
+      setTimeout(() => el("nameInput").focus(), 300);
+    }
+
     el("gameOverModal").classList.remove("hidden");
   }
 
   function restart() {
     stopTimer();
+    commitEntry(); // 提交排行榜成绩（若本局进了前三）
 
     Object.assign(state, {
       floor: 1,
@@ -1700,35 +1852,5 @@
   setTimeout(showQuestion, 400);
 </script>
 
-<style>
-  .qr-footer{margin-top:16px}
-  .qr-footer-row{display:flex;gap:16px;flex-wrap:wrap}
-  .qr-footer-card.xhs strong{color:#FF2442}
-  .qr-footer-card{display:inline-flex;align-items:center;gap:14px;background:rgba(12,32,22,.92);border:1px solid rgba(132,204,22,.22);border-radius:18px;padding:12px 18px}
-  .qr-footer-card img{width:88px;height:88px;border-radius:10px;display:block}
-  .qr-footer-text{display:flex;flex-direction:column;gap:4px;text-align:left}
-  .qr-footer-text strong{font-size:13px;color:#eaffdf;font-weight:600}
-  .qr-footer-text span{font-size:11px;color:rgba(234,255,223,.6)}
-</style>
-<footer class="qr-footer">
-<div class="qr-footer-row">
-  <div class="qr-footer-card">
-    <img src="qrcode.jpg" alt="公众号二维码">
-    <div class="qr-footer-text">
-      <strong>扫码关注公众号</strong>
-      <span>知识地下城 · 更多 AI 游戏与更新</span>
-    </div>
-  </div>
-
-  <div class="qr-footer-card xhs">
-    <img src="xhs-qr.jpg" alt="小红书二维码">
-    <div class="qr-footer-text">
-      <strong>小红书 · 酒里加盐</strong>
-      <span>小红书号 6100441379 · 扫码找到我</span>
-      <span>酒馆会往酒里加盐，让顾客越喝越渴</span>
-    </div>
-  </div>
-</div>
-</footer>
 </body>
 </html>
