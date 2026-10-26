@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>
+  // GitHub Pages 镜像无法直连云端榜（网关按 Origin 白名单拦截），自动跳转到全区共享版；本地/其他域名不受影响
+  if (location.hostname === "slatinwine.github.io") {
+    location.replace("https://knowledge-dungeon.app.workbuddy.host/?sharecode=M3BRKOCJWP");
+  }
+</script>
 <title>知识地下城 · 答题闯关</title>
 <style>
   * { box-sizing: border-box; }
@@ -713,7 +719,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script src="./workbuddy-cloud-sdk.js"></script>
 <script>
   // 云服务初始化（WorkBuddy 托管；publishableKey 无权限，服务端按 Origin 校验）
   const cloud = (window.WorkBuddyCloud && WorkBuddyCloud.createWorkBuddyCloud({
