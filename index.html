@@ -637,7 +637,7 @@
   <div class="best">🏆 历史最佳：第 <b id="bestFloor">-</b> 层 · 答对挥刀，答错挨打 · 20 层后是面试档 · 选项顺序每局随机</div>
 
   <div class="board" id="board">
-    <div class="board-head"><span>🏅 勇士排行榜 · TOP 3</span><button id="boardClear">清空</button></div>
+    <div class="board-head"><span>🏅 勇士排行榜 · TOP 3 <span id="boardMode"></span></span><button id="boardClear">清空本地</button></div>
     <div id="boardList"></div>
   </div>
 
@@ -713,6 +713,15 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script>
+  // 云服务初始化（WorkBuddy 托管；publishableKey 无权限，服务端按 Origin 校验）
+  const cloud = (window.WorkBuddyCloud && WorkBuddyCloud.createWorkBuddyCloud({
+    endpoint: "https://knowledge-dungeon.app.workbuddy.host",
+    oauthRelayBaseUrl: "https://www.workbuddy.cn/v2/as/genie-baas/oauth",
+    publishableKey: "wbpk_dRiHHfRYspvCr91omFtZfU_UJKZiUOe3exJ256oRqqa8q50x1akjgBm"
+  })) || null;
+</script>
 <script>
   const el = id => document.getElementById(id);
 
@@ -1188,13 +1197,15 @@
 
   renderBest();
 
-  // ---------- 排行榜（本地 Top 3） ----------
+  // ---------- 排行榜（云端全局 Top 3，断网时本地兜底） ----------
   const LB_KEY = "knowledge-dungeon-leaderboard";
   const NAME_KEY = "knowledge-dungeon-player-name";
   const MEDALS = ["🥇", "🥈", "🥉"];
   let pendingEntry = null; // 结算时暂存，重启时提交
+  let cloudBoard = [];     // 云端榜单缓存
+  let cloudOk = false;     // 云端是否可用
 
-  function getBoard() {
+  function localBoard() {
     try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); }
     catch (e) { return []; }
   }
@@ -1205,9 +1216,15 @@
     return a.ts - b.ts;
   }
 
+  function activeBoard() {
+    return (cloudOk ? cloudBoard : localBoard()).map(e => ({ ...e, ts: e.ts || 0 }));
+  }
+
   function renderBoard() {
+    el("boardMode").textContent = cloudOk ? "☁️ 全区共享" : "📴 离线（仅本设备）";
+    el("boardClear").style.display = cloudOk ? "none" : "";
     const list = el("boardList");
-    const board = getBoard();
+    const board = activeBoard();
     if (!board.length) {
       list.innerHTML = '<div class="board-empty">虚位以待——打出一局好成绩，留下你的名字</div>';
       return;
@@ -1218,23 +1235,68 @@
     }).join("");
   }
 
-  function qualifiesForBoard(entry) {
-    const board = getBoard();
-    if (entry.floor <= 1) return false;
-    if (board.length < 3) return true;
-    const last = board[board.length - 1];
-    return boardBetter(entry, last) < 0;
+  async function fetchBoard() {
+    if (!cloud) { cloudOk = false; renderBoard(); return; }
+    try {
+      const { data, error } = await cloud.database.from("leaderboard")
+        .select("name, floor, correct, acc")
+        .order("floor", { ascending: false })
+        .order("correct", { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      cloudBoard = data || [];
+      cloudOk = true;
+    } catch (e) {
+      cloudOk = false;
+    }
+    renderBoard();
   }
 
-  function commitEntry() {
+  function qualifiesForBoard(entry) {
+    const board = activeBoard();
+    if (entry.floor <= 1) return false;
+    if (board.length < 3) return true;
+    return boardBetter(entry, board[board.length - 1]) < 0;
+  }
+
+  // 结算后异步拉最新榜单再判定资格（避免缓存过期误判）
+  async function judgeBoardEntry(entry) {
+    pendingEntry = null;
+    el("nameRow").classList.add("hidden");
+    await fetchBoard();
+    if (!qualifiesForBoard(entry)) return;
+    pendingEntry = entry;
+    const rank = activeBoard().filter(e => boardBetter(e, entry) < 0).length + 1;
+    el("nameLabel").textContent = cloudOk
+      ? `🏅 你杀进了全区前三（当前第 ${rank} 位）！留下大名：`
+      : "📴 离线模式：你杀进了本地前三！留下大名：";
+    el("nameInput").value = localStorage.getItem(NAME_KEY) || "";
+    el("nameRow").classList.remove("hidden");
+    setTimeout(() => el("nameInput").focus(), 300);
+  }
+
+  async function commitEntry() {
     if (!pendingEntry) return;
     const name = (el("nameInput").value || "").trim().slice(0, 12) || "无名勇士";
     localStorage.setItem(NAME_KEY, name);
-    const board = getBoard();
-    board.push({ name, floor: pendingEntry.floor, correct: pendingEntry.correct, acc: pendingEntry.acc, ts: pendingEntry.ts });
+    const entry = { name, floor: pendingEntry.floor, correct: pendingEntry.correct, acc: pendingEntry.acc };
+    if (cloud) {
+      try {
+        const { error } = await cloud.database.from("leaderboard").insert(entry);
+        if (error) throw error;
+        await fetchBoard();
+        pendingEntry = null;
+        return;
+      } catch (e) {
+        // 云端提交失败，落到本地
+      }
+    }
+    const board = localBoard();
+    board.push({ ...entry, ts: Date.now() });
     board.sort(boardBetter);
     localStorage.setItem(LB_KEY, JSON.stringify(board.slice(0, 3)));
     pendingEntry = null;
+    cloudOk = false;
     renderBoard();
   }
 
@@ -1248,6 +1310,7 @@
   });
 
   renderBoard();
+  fetchBoard();
 
   // ---------- 工具 ----------
   function shuffle(arr) {
@@ -1783,14 +1846,7 @@
     pendingEntry = null;
     el("nameRow").classList.add("hidden");
     const entry = { floor: state.floor, correct: state.correct, acc, ts: Date.now() };
-    if (qualifiesForBoard(entry)) {
-      pendingEntry = entry;
-      const rank = getBoard().filter(e => boardBetter(e, entry) < 0).length + 1;
-      el("nameLabel").textContent = `🏅 你杀进了前三（当前第 ${rank} 位）！留下大名：`;
-      el("nameInput").value = localStorage.getItem(NAME_KEY) || "";
-      el("nameRow").classList.remove("hidden");
-      setTimeout(() => el("nameInput").focus(), 300);
-    }
+    judgeBoardEntry(entry); // 异步拉最新榜单并判定资格
 
     el("gameOverModal").classList.remove("hidden");
   }
